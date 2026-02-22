@@ -2,7 +2,7 @@ package de.nekrozofbrionac.game.states
 
 import GameState
 import de.nekrozofbrionac.game.Game
-import de.nekrozofbrionac.game.draw
+import de.nekrozofbrionac.draw
 
 class InitialState : GameState {
   override fun onStateEntry(game: Game) {
@@ -12,7 +12,6 @@ class InitialState : GameState {
       }
       game.turnPlayer++
     }
-
 
     game.gameState = PlayerTurnStartState();
     game.handleStateChange();

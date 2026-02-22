@@ -10,8 +10,8 @@ fun main() {
   println("Hello World!")
 
   val game = Game(
-    // TerminalPlayer(),
-    BotPlayer(PongSpeedRunBot),
+    TerminalPlayer(),
+    // BotPlayer(PongSpeedRunBot),
     BotPlayer(PongSpeedRunBot),
     BotPlayer(PongSpeedRunBot),
     BotPlayer(PongSpeedRunBot),

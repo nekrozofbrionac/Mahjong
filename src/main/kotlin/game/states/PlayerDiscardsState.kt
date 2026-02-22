@@ -6,8 +6,8 @@ import de.nekrozofbrionac.game.Game
 class PlayerDiscardsState: GameState {
   override fun onStateEntry(game: Game) {
     val player = game.getCurrentPlayer();
-    val discardedTile = player.playerControl.chooseDiscard(player);
-    game.board.addToDiscard(player.discard(discardedTile));
+    val playerPov = player.playerControl.chooseDiscard(game.compilePlayerPov(game.turnPlayer));
+    game.board.addToDiscard(player.discard(playerPov));
     player.sortHand();
 
     // Priority: Win, Kong, Pong, Chow
@@ -16,8 +16,8 @@ class PlayerDiscardsState: GameState {
 
     for (kongIndex in 0..3) {
       val kongPlayer = game.getPlayerByIndex(kongIndex);
-      if (kongPlayer.kongAvailableInHand(discardedTile)) {
-        if (kongPlayer.playerControl.kongFromDiscard(kongPlayer, discardedTile)) {
+      if (kongPlayer.isKongAvailableInHand(playerPov)) {
+        if (kongPlayer.playerControl.kongFromDiscard(game.compilePlayerPov(kongIndex))) {
           val poppedDiscard = game.board.popLastDiscard()
           kongPlayer.addToHand(poppedDiscard)
           kongPlayer.formKongMeld(poppedDiscard);
@@ -29,14 +29,14 @@ class PlayerDiscardsState: GameState {
       }
     }
 
-    for (i in 0..3) {
-      val pongPlayer = game.getPlayerByIndex(i);
-      if (pongPlayer.pongAvailable(discardedTile)) {
-        if (pongPlayer.playerControl.pongFromDiscard(pongPlayer, discardedTile)) {
+    for (pongIndex in 0..3) {
+      val pongPlayer = game.getPlayerByIndex(pongIndex);
+      if (pongPlayer.isPongAvailable(playerPov)) {
+        if (pongPlayer.playerControl.pongFromDiscard(game.compilePlayerPov(pongIndex))) {
           val poppedDiscard = game.board.popLastDiscard()
           pongPlayer.addToHand(poppedDiscard);
           pongPlayer.formPongMeld(poppedDiscard);
-          game.turnPlayer = i;
+          game.turnPlayer = pongIndex;
           game.gameState = PlayerDiscardsState(); //... do i really need to do that.
           game.handleStateChange();
           return;

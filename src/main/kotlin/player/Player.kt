@@ -16,12 +16,15 @@ interface Player {
   fun formKongMeld(tile: TileType);
   fun formPongMeld(tile: TileType);
 
+  fun isKongAvailableInHand(tile: TileType): Boolean {
+    return hand.count { it == tile } >= 3;
+  }
 
-  fun pongAvailable(tile: TileType): Boolean {
+  fun isPongAvailable(tile: TileType): Boolean {
     return hand.count { it == tile } >= 2;
   }
 
-  fun chowAvailable(tile: TileType): Boolean {
+  fun isChowAvailable(tile: TileType): Boolean {
     if (tile.numeral == null || tile.suit == null) {
       return false;
     }
@@ -36,7 +39,4 @@ interface Player {
     return (twoBelow && oneBelow) || (oneBelow && oneAbove) || (oneAbove && twoAbove)
   }
 
-  fun kongAvailableInHand(tile: TileType): Boolean {
-    return hand.count { it == tile } >= 3;
-  }
 }

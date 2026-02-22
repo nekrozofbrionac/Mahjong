@@ -1,28 +1,39 @@
 package de.nekrozofbrionac.player.control.bot
 
-import Player
+import de.nekrozofbrionac.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.player.control.PlayerControl
 
 object PongSpeedRunBot: PlayerControl{
-  override fun act() = Unit
-  override fun chooseDiscard(p: Player): TileType {
-    return p.hand.find { handTile -> p.hand.count { it == handTile } == 1 }
-      ?: p.hand.random();
+  override fun chooseDiscard(pov: PlayerPov): TileType {
+    return pov.hand.find { handTile -> pov.hand.count { it == handTile } == 1 }
+      ?: pov.hand.random();
   }
 
-  override fun kongFromDiscard(player: Player, tile: TileType): Boolean {
-    println("PONG SPEED RUN BOT SAYS: LETS KONG! $tile")
+  override fun kongFromDiscard(pov: PlayerPov): Boolean {
+    if (pov.discarded.isEmpty()) {
+      return false
+    }
+
+    println("PONG SPEED RUN BOT SAYS: LETS KONG! ${pov.discarded.last()}")
     return true;
   }
 
-  override fun pongFromDiscard(player: Player, tile: TileType): Boolean {
-    println("PONG SPEED RUN BOT SAYS: LETS PONG! $tile")
+  override fun pongFromDiscard(pov: PlayerPov): Boolean {
+    if (pov.discarded.isEmpty()) {
+      return false
+    }
+
+    println("PONG SPEED RUN BOT SAYS: LETS PONG! ${pov.discarded.last()}")
     return true;
   }
 
-  override fun chowFromDiscard(player: Player, tile: TileType): Boolean {
-    println("PONG SPEED RUN BOT SAYS: LETS CHOW! $tile")
+  override fun chowFromDiscard(pov: PlayerPov): Boolean {
+    if (pov.discarded.isEmpty()) {
+      return false
+    }
+
+    println("PONG SPEED RUN BOT SAYS: LETS CHOW! ${pov.discarded.last()}")
     return true;
   }
 }

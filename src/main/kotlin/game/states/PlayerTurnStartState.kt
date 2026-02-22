@@ -2,7 +2,7 @@ package de.nekrozofbrionac.game.states
 
 import GameState
 import de.nekrozofbrionac.game.Game
-import de.nekrozofbrionac.game.draw
+import de.nekrozofbrionac.draw
 
 class PlayerTurnStartState : GameState {
 

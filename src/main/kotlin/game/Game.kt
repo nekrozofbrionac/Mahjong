@@ -3,6 +3,7 @@ package de.nekrozofbrionac.game
 import GameState
 import Player
 import de.nekrozofbrionac.board.SimpleBoard
+import de.nekrozofbrionac.formatTiles
 import de.nekrozofbrionac.game.states.InitialState
 import de.nekrozofbrionac.mahjong.board.Board
 import de.nekrozofbrionac.mahjong.board.TileType
@@ -13,6 +14,29 @@ enum class Turn {
   WEST,
   NORTH,
 }
+
+data class PlayerPov(
+  val playerSeat: Turn,
+
+  val prevSeat: Turn,
+  val nextSeat: Turn,
+  val oppoSeat: Turn,
+
+  val prevMelds: List<List<TileType>>,
+  val nextMelds: List<List<TileType>>,
+  val oppoMelds: List<List<TileType>>,
+
+  val prevFlowers: List<TileType>,
+  val nextFlowers: List<TileType>,
+  val oppoFlowers: List<TileType>,
+
+  val discarded: List<TileType>,
+  val wallRemaining: Int,
+
+  val hand: List<TileType>,
+  val melds: List<List<TileType>>,
+  val flowers: List<TileType>,
+)
 
 class Game(
   val playerEast: Player,
@@ -65,6 +89,31 @@ class Game(
     return board.discarded.last()
   }
 
+  fun compilePlayerPov(index: Int): PlayerPov {
+    val prev = getPlayerByIndex(index - 1)
+    val pov = getPlayerByIndex(index)
+    val next = getPlayerByIndex(index + 1)
+    val oppo = getPlayerByIndex(index + 2)
+
+    return PlayerPov(
+      playerSeat = Turn.entries[index],
+      prevSeat = Turn.entries[index+3 % 4],
+      nextSeat = Turn.entries[index+1 % 4],
+      oppoSeat = Turn.entries[index+2 % 4],
+      prevMelds = prev.melds,
+      nextMelds = next.melds,
+      oppoMelds = oppo.melds,
+      prevFlowers = prev.flowers,
+      nextFlowers = next.flowers,
+      oppoFlowers = oppo.flowers,
+      discarded = board.discarded,
+      wallRemaining = board.wall.size,
+      hand = pov.hand,
+      melds = pov.melds,
+      flowers = pov.flowers,
+    )
+  }
+
   fun handleStateChange() {
     printGame();
     this.gameState.onStateEntry(this);
@@ -83,54 +132,13 @@ class Game(
     println("Board:")
     println("    Wall remaining: ${board.wall.size}")
     println("    Discard pile:")
-    println(formatTiles(board.discarded, 18, 12))
+    println(formatTiles(board.discarded, 18))
     println("Current player ($turnPlayer):")
     println("    Hand:")
-    println(formatTiles(getCurrentPlayer().hand, 18, 12))
+    println(formatTiles(getCurrentPlayer().hand, 18))
     println("    Melds:")
-    getCurrentPlayer().melds.forEach { println(formatTiles(it, 16, 12)) }
+    getCurrentPlayer().melds.forEach { println(formatTiles(it, 16)) }
     println("    Flowers:")
-    println(formatTiles(getCurrentPlayer().flowers, 18, 12))
+    println(formatTiles(getCurrentPlayer().flowers, 18 ))
   }
-
-  private fun formatTiles(tiles: List<TileType>, perLine: Int, paddingLeft: Int): String {
-    val maxLength = TileType.entries.maxOf { it.shortHand.length }
-    return tiles
-      .map {
-        val color = when (it.suit) {
-          "B" -> "\u001b[1;97;42m"
-          "S" -> "\u001b[1;97;44m"
-          "C" -> "\u001b[1;97;41m"
-          else -> {
-            when (it) {
-              TileType.WIND_EAST,
-              TileType.WIND_SOUTH,
-              TileType.WIND_WEST,
-              TileType.WIND_NORTH -> "\u001b[1;36;107m"
-
-              TileType.DRAGON_RED -> "\u001b[1;31;107m"
-              TileType.DRAGON_GREEN -> "\u001b[1;32;107m"
-              TileType.DRAGON_WHITE -> "\u001b[1;30;107m"
-              else -> ""
-            };
-
-          }
-        }
-
-        val tileEngraving = if (it.suit != null)
-          it.shortHand.lowercase().padEnd(maxLength)
-        else {
-          it.shortHand.uppercase().padEnd(maxLength)
-        }
-
-        val resetColor = "\u001b[0m";
-
-        return@map "$color $tileEngraving $resetColor"
-      }
-
-      .chunked(perLine)
-      .joinToString("\n") { "        ".plus(it.joinToString(" ")) }
-  }
-
-
 }

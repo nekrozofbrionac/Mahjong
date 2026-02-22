@@ -1,22 +1,29 @@
 package de.nekrozofbrionac.player
 
-import Player
+import de.nekrozofbrionac.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.player.control.PlayerControl
+import de.nekrozofbrionac.printPov
 
 class TerminalPlayer : AbstractPlayer() {
   override val playerControl: PlayerControl = object : PlayerControl {
-    override fun act() = Unit
-    override fun chooseDiscard(p: Player): TileType {
+    override fun chooseDiscard(pov: PlayerPov): TileType {
+      printPov(pov);
       return interact("Name a tile to discard, e.g. \"b1\":") { l ->
-        p.hand.find {
+        pov.hand.find {
           l.uppercase().trim() == it.shortHand
         }
       }
     }
 
-    override fun kongFromDiscard(player: Player, tile: TileType): Boolean {
-      return interact("Kong with ${tile.name.lowercase()}? (Y/n)") { l ->
+    override fun kongFromDiscard(pov: PlayerPov): Boolean {
+      printPov(pov);
+      if (pov.discarded.isEmpty()) {
+        throw UnsupportedOperationException("Option to kong even though there are no discards?")
+      }
+
+
+      return interact("Kong with ${pov.discarded.last().name.lowercase()}? (Y/n)") { l ->
         when (l.trim().lowercase()) {
           "y" -> true
           "yes" -> true
@@ -29,8 +36,12 @@ class TerminalPlayer : AbstractPlayer() {
       }
     }
 
-    override fun pongFromDiscard(player: Player, tile: TileType): Boolean {
-      return interact("Pong with ${tile.name.lowercase()}? (Y/n)") { l ->
+    override fun pongFromDiscard(pov: PlayerPov): Boolean {
+      printPov(pov);
+      if (pov.discarded.isEmpty()) {
+        throw UnsupportedOperationException("Option to pong even though there are no discards?")
+      }
+      return interact("Pong with ${pov.discarded.last().name.lowercase()}? (Y/n)") { l ->
         when (l.trim().lowercase()) {
           "y" -> true
           "yes" -> true
@@ -43,8 +54,12 @@ class TerminalPlayer : AbstractPlayer() {
       }
     }
 
-    override fun chowFromDiscard(player: Player, tile: TileType): Boolean {
-      return interact("Chow with ${tile.name.lowercase()}? (Y/n)") { l ->
+    override fun chowFromDiscard(pov: PlayerPov): Boolean {
+      printPov(pov);
+      if (pov.discarded.isEmpty()) {
+        throw UnsupportedOperationException("Option to pong even though there are no discards?")
+      }
+      return interact("Chow with ${pov.discarded.last().name.lowercase()}? (Y/n)") { l ->
         when (l.trim().lowercase()) {
           "y" -> true
           "yes" -> true
@@ -57,7 +72,6 @@ class TerminalPlayer : AbstractPlayer() {
       }
     }
   }
-
 
   private fun <T> interact(prompt: String, parse: (String) -> T?): T {
     var output: T? = null;

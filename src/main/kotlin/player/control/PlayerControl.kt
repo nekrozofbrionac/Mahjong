@@ -1,12 +1,11 @@
 package de.nekrozofbrionac.player.control
 
-import Player
+import de.nekrozofbrionac.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
 
 interface PlayerControl {
-  fun act()
-  fun chooseDiscard(player: Player): TileType
-  fun kongFromDiscard(player: Player, tile: TileType): Boolean
-  fun pongFromDiscard(player: Player, tile: TileType): Boolean
-  fun chowFromDiscard(player: Player, tile: TileType): Boolean
+  fun chooseDiscard(pov: PlayerPov): TileType
+  fun kongFromDiscard(pov: PlayerPov): Boolean
+  fun pongFromDiscard(pov: PlayerPov): Boolean
+  fun chowFromDiscard(pov: PlayerPov): Boolean
 }
