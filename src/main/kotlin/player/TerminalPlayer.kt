@@ -4,41 +4,77 @@ import Player
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.player.control.PlayerControl
 
-class TerminalPlayer : Player {
+class TerminalPlayer : AbstractPlayer() {
   override val playerControl: PlayerControl = object : PlayerControl {
     override fun act() = Unit
     override fun chooseDiscard(p: Player): TileType {
-      println("--- PLAYER INTERACTION REQUIRED ---")
-      println("Name a tile to discard, e.g. \"b1\" ")
-      var prospect: TileType? = null;
-      while (null == prospect) {
-        val line = readlnOrNull() ?: continue;
-        prospect = p.hand.find { line.uppercase().trim() == it.shortHand} ?: continue;
+      return interact("Name a tile to discard, e.g. \"b1\":") { l ->
+        p.hand.find {
+          l.uppercase().trim() == it.shortHand
+        }
       }
-      println("Thank you, discarding ${prospect.name.lowercase()}!")
-      println("--- PLAYER INTERACTION END ---")
-      return prospect;
-    }
-  }
-  override val hand: MutableList<TileType> = mutableListOf()
-  override val melds: MutableList<MutableList<TileType>> = mutableListOf();
-  override val flowers: MutableList<TileType> = mutableListOf();
-
-  override fun sortHand() {
-    hand.sort();
-  }
-
-  override fun addToHand(tile: TileType) {
-    if (tile.isFlower()) {
-      flowers.add(tile)
-      return
     }
 
-    hand.add(tile);
+    override fun kongFromDiscard(player: Player, tile: TileType): Boolean {
+      return interact("Kong with ${tile.name.lowercase()}? (Y/n)") { l ->
+        when (l.trim().lowercase()) {
+          "y" -> true
+          "yes" -> true
+          "true" -> true
+          "n" -> false
+          "no" -> false
+          "false" -> false
+          else -> null
+        }
+      }
+    }
+
+    override fun pongFromDiscard(player: Player, tile: TileType): Boolean {
+      return interact("Pong with ${tile.name.lowercase()}? (Y/n)") { l ->
+        when (l.trim().lowercase()) {
+          "y" -> true
+          "yes" -> true
+          "true" -> true
+          "n" -> false
+          "no" -> false
+          "false" -> false
+          else -> null
+        }
+      }
+    }
+
+    override fun chowFromDiscard(player: Player, tile: TileType): Boolean {
+      return interact("Chow with ${tile.name.lowercase()}? (Y/n)") { l ->
+        when (l.trim().lowercase()) {
+          "y" -> true
+          "yes" -> true
+          "true" -> true
+          "n" -> false
+          "no" -> false
+          "false" -> false
+          else -> null
+        }
+      }
+    }
   }
 
-  override fun discard(tile: TileType): TileType? {
-    val done = hand.remove(tile);
-    return if (done) tile else null;
+
+  private fun <T> interact(prompt: String, parse: (String) -> T?): T {
+    var output: T? = null;
+    println("")
+    println("------ PLAYER INTERACTION REQUIRED ------")
+    println("")
+    println("    $prompt")
+
+    while (output == null) {
+      print("    > ")
+      val line = readlnOrNull() ?: continue
+      output = parse(line) ?: continue
+    }
+    println("    (given answer: $output)")
+    println("")
+    println("------- PLAYER INTERACTION ENDED --------")
+    println("")
+    return output;
   }
 }

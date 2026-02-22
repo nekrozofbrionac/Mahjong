@@ -13,6 +13,7 @@ class PlayerTurnStartState : GameState {
     player.sortHand()
 
 
+    // TODO: Handle drawing into a kong
     if (!draw(game.board, player)) {
       game.gameState = DrawnState();
       game.handleStateChange();

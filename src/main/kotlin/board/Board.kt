@@ -6,4 +6,5 @@ interface Board {
 
   fun drawFromWall(): TileType?;
   fun addToDiscard(tile: TileType?)
+  fun popLastDiscard(): TileType
 }

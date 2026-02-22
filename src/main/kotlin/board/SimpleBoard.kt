@@ -24,6 +24,10 @@ class SimpleBoard : Board {
     discarded.add(tile)
   }
 
+  override fun popLastDiscard(): TileType {
+    return discarded.removeLast();
+  }
+
   init {
     TileType.entries.forEach { tile ->
       repeat(tile.count) { this.wall.add(tile); }

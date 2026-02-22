@@ -47,6 +47,20 @@ class Game(
     }
   }
 
+  fun getPlayerByIndex(index: Int): Player {
+    val normalizedIndex = (index + 4) % 4;
+
+    return when (normalizedIndex) {
+      0 -> playerEast;
+      1 -> playerSouth;
+      2 -> playerWest;
+      3 -> playerNorth;
+      else -> {
+        return this.getPlayerByIndex(index)
+      }
+    }
+  }
+
   fun getDiscardedTile(): TileType {
     return board.discarded.last()
   }
@@ -64,24 +78,56 @@ class Game(
   private fun printGame() {
     println()
     println()
-    println("Current game state: ${gameState.javaClass.name}")
+    println("Current game state: ${gameState.javaClass.name.substringAfterLast(".")}")
+    println("Current player: $turnPlayer")
     println("Board:")
     println("    Wall remaining: ${board.wall.size}")
     println("    Discard pile:")
-    println(formatTiles(board.discarded, 9, 12))
-    println("Current player: $turnPlayer")
+    println(formatTiles(board.discarded, 18, 12))
+    println("Current player ($turnPlayer):")
     println("    Hand:")
-    println(formatTiles(getCurrentPlayer().hand, 6, 12))
+    println(formatTiles(getCurrentPlayer().hand, 18, 12))
     println("    Melds:")
-    println("         (None yet. Todo)")
+    getCurrentPlayer().melds.forEach { println(formatTiles(it, 16, 12)) }
     println("    Flowers:")
-    println(formatTiles(getCurrentPlayer().flowers, 6, 12))
+    println(formatTiles(getCurrentPlayer().flowers, 18, 12))
   }
 
   private fun formatTiles(tiles: List<TileType>, perLine: Int, paddingLeft: Int): String {
     val maxLength = TileType.entries.maxOf { it.shortHand.length }
     return tiles
-      .map { it.shortHand.uppercase().padEnd(maxLength) }
+      .map {
+        val color = when (it.suit) {
+          "B" -> "\u001b[1;97;42m"
+          "S" -> "\u001b[1;97;44m"
+          "C" -> "\u001b[1;97;41m"
+          else -> {
+            when (it) {
+              TileType.WIND_EAST,
+              TileType.WIND_SOUTH,
+              TileType.WIND_WEST,
+              TileType.WIND_NORTH -> "\u001b[1;36;107m"
+
+              TileType.DRAGON_RED -> "\u001b[1;31;107m"
+              TileType.DRAGON_GREEN -> "\u001b[1;32;107m"
+              TileType.DRAGON_WHITE -> "\u001b[1;30;107m"
+              else -> ""
+            };
+
+          }
+        }
+
+        val tileEngraving = if (it.suit != null)
+          it.shortHand.lowercase().padEnd(maxLength)
+        else {
+          it.shortHand.uppercase().padEnd(maxLength)
+        }
+
+        val resetColor = "\u001b[0m";
+
+        return@map "$color $tileEngraving $resetColor"
+      }
+
       .chunked(perLine)
       .joinToString("\n") { "        ".plus(it.joinToString(" ")) }
   }

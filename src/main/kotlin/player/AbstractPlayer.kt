@@ -2,15 +2,8 @@ package de.nekrozofbrionac.player
 
 import Player
 import de.nekrozofbrionac.mahjong.board.TileType
-import de.nekrozofbrionac.player.control.PlayerControl
 
-class VoidPlayer : Player {
-  override val playerControl: PlayerControl = object : PlayerControl {
-    override fun act() = Unit
-    override fun chooseDiscard(p: Player): TileType {
-      return p.hand.first();
-    }
-  }
+abstract class AbstractPlayer : Player {
   override val hand: MutableList<TileType> = mutableListOf()
   override val melds: MutableList<MutableList<TileType>> = mutableListOf();
   override val flowers: MutableList<TileType> = mutableListOf();
@@ -31,5 +24,23 @@ class VoidPlayer : Player {
   override fun discard(tile: TileType): TileType? {
     val done = hand.remove(tile);
     return if (done) tile else null;
+  }
+
+  override fun formKongMeld(tile: TileType) {
+    if (hand.count { it == tile } < 4) {
+      return;
+    }
+
+    hand.removeAll { it == tile };
+    melds.add(mutableListOf(tile, tile, tile, tile))
+  }
+
+  override fun formPongMeld(tile: TileType) {
+    if (hand.count { it == tile } < 3) {
+      return;
+    }
+
+    repeat(3) { hand.remove(tile) }
+    melds.add(mutableListOf(tile, tile, tile))
   }
 }
