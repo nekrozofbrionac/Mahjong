@@ -6,6 +6,7 @@ interface Player {
 
   val hand: List<TileType>;
   val melds: List<List<TileType>>
+  val flowers: List<TileType>;
 
   fun sortHand()
 

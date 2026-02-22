@@ -2,8 +2,9 @@ package de.nekrozofbrionac.game.states
 
 import GameState
 import de.nekrozofbrionac.game.Game
+import de.nekrozofbrionac.game.draw
 
-class PlayerTurnStartState: GameState{
+class PlayerTurnStartState : GameState {
 
   override fun onStateEntry(game: Game) {
     game.turn++;
@@ -11,15 +12,13 @@ class PlayerTurnStartState: GameState{
     val player = game.getCurrentPlayer();
     player.sortHand()
 
-    val drawnTile = game.board.drawFromWall();
 
-    if (null == drawnTile) {
+    if (!draw(game.board, player)) {
       game.gameState = DrawnState();
       game.handleStateChange();
       return;
     }
 
-    player.addToHand(drawnTile);
     game.gameState = PlayerDiscardsState();
     game.handleStateChange();
   }

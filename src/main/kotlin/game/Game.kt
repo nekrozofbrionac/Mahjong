@@ -41,7 +41,8 @@ class Game(
       2 -> playerWest;
       3 -> playerNorth;
       else -> {
-        this.turnPlayer %= 4; return this.getCurrentPlayer()
+        this.turnPlayer %= 4;
+        return this.getCurrentPlayer()
       }
     }
   }
@@ -51,6 +52,7 @@ class Game(
   }
 
   fun handleStateChange() {
+    printGame();
     this.gameState.onStateEntry(this);
   }
 
@@ -58,4 +60,31 @@ class Game(
   fun terminate() {
     println("This game is over.");
   }
+
+  private fun printGame() {
+    println()
+    println()
+    println("Current game state: ${gameState.javaClass.name}")
+    println("Board:")
+    println("    Wall remaining: ${board.wall.size}")
+    println("    Discard pile:")
+    println(formatTiles(board.discarded, 9, 12))
+    println("Current player: $turnPlayer")
+    println("    Hand:")
+    println(formatTiles(getCurrentPlayer().hand, 6, 12))
+    println("    Melds:")
+    println("         (None yet. Todo)")
+    println("    Flowers:")
+    println(formatTiles(getCurrentPlayer().flowers, 6, 12))
+  }
+
+  private fun formatTiles(tiles: List<TileType>, perLine: Int, paddingLeft: Int): String {
+    val maxLength = TileType.entries.maxOf { it.shortHand.length }
+    return tiles
+      .map { it.shortHand.uppercase().padEnd(maxLength) }
+      .chunked(perLine)
+      .joinToString("\n") { "        ".plus(it.joinToString(" ")) }
+  }
+
+
 }
