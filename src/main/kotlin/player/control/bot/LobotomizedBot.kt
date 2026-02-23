@@ -3,6 +3,7 @@ package de.nekrozofbrionac.player.control.bot
 import de.nekrozofbrionac.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.player.control.PlayerControl
+import de.nekrozofbrionac.printPov
 
 object LobotomizedBot: PlayerControl {
   override fun win(pov: PlayerPov): Boolean {
@@ -31,12 +32,21 @@ object LobotomizedBot: PlayerControl {
     return true;
   }
 
-  override fun chowFromDiscard(pov: PlayerPov): Boolean {
+  override fun chowFromDiscard(pov: PlayerPov): TileType? {
     if (pov.discarded.isEmpty()) {
-      return false
+      return null
     }
 
-    println("LOBOTOMIZED BOT SAYS: LETS CHOW! ${pov.discarded.last()}")
-    return true;
+    val possiblities = determineChowPossibilities(pov.hand, pov.discarded.last());
+    if (possiblities.isEmpty()) {
+      println("************************ POV in chowFromDiscard")
+      printPov(pov)
+      throw UnsupportedOperationException("HOW AM I ALLOWED TO CHOW WITH NOTHING?!")
+    }
+
+    val choice = possiblities.random()
+
+    println("LOBOTOMIZED BOT SAYS: LETS CHOW! ${choice.first()}")
+    return choice.first();
   }
 }

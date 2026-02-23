@@ -127,7 +127,7 @@ class Game(
   }
 
   fun handleStateChange() {
-    printGame();
+    //printGame();
     this.gameState.onStateEntry(this);
   }
 

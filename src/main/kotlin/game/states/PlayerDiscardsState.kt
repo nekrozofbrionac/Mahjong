@@ -59,12 +59,20 @@ class PlayerDiscardsState : GameState {
       }
     }
 
-    /* TODO
-    val maybeChowPlayer = game.getPlayerByIndex(game.turnPlayer+1)
-    if (maybeChowPlayer.chowAvailable(discardedTile)) {
-
+    val maybeChowPlayer = game.getPlayerByIndex(game.turnPlayer + 1)
+    if (maybeChowPlayer.isChowAvailable(discardedTile)) {
+      val choice = maybeChowPlayer.playerControl.chowFromDiscard(game.compilePlayerPov(game.turnPlayer + 1))
+      if (null != choice) {
+        val poppedDiscard = game.board.popLastDiscard()
+        maybeChowPlayer.addToHand(poppedDiscard);
+        maybeChowPlayer.formChowMeld(choice);
+        game.turnPlayer++;
+        game.turn++;
+        game.gameState = PlayerDiscardsState(); //... do i really need to do that.
+        game.handleStateChange();
+        return;
+      }
     }
-     */
 
     game.turnPlayer++
     game.turn++;

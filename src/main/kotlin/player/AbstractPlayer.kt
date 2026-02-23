@@ -43,4 +43,24 @@ abstract class AbstractPlayer : Player {
     repeat(3) { hand.remove(tile) }
     melds.add(mutableListOf(tile, tile, tile))
   }
+
+  override fun formChowMeld(tile: TileType) {
+    if (tile.numeral == null || tile.suit == null) {
+      return;
+    }
+
+    // 3 cases
+    val sameSuited = hand.filter { it.suit == tile.suit };
+    val oneAbove = sameSuited.find { it.numeral == tile.numeral + 1 }
+    val twoAbove = sameSuited.find { it.numeral == tile.numeral + 2 }
+
+    if (oneAbove == null || twoAbove == null) {
+      return;
+    }
+
+    hand.remove(tile)
+    hand.remove(oneAbove)
+    hand.remove(twoAbove)
+    melds.add(mutableListOf(tile, oneAbove, twoAbove))
+  }
 }

@@ -32,12 +32,8 @@ object PongSpeedRunBot: PlayerControl{
     return true;
   }
 
-  override fun chowFromDiscard(pov: PlayerPov): Boolean {
-    if (pov.discarded.isEmpty()) {
-      return false
-    }
-
-    println("PONG SPEED RUN BOT SAYS: LETS CHOW! ${pov.discarded.last()}")
-    return true;
+  override fun chowFromDiscard(pov: PlayerPov): TileType?{
+    println("PONG SPEED RUN BOT SAYS: I WILL NEVER CHOW!!!")
+    return null;
   }
 }

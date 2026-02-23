@@ -15,6 +15,8 @@ interface Player {
 
   fun formKongMeld(tile: TileType);
   fun formPongMeld(tile: TileType);
+  // Forms a Chow indicated by its first tile.
+  fun formChowMeld(tile: TileType);
 
   fun isKongAvailableInHand(tile: TileType): Boolean {
     return hand.count { it == tile } >= 3;
