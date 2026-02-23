@@ -1,11 +1,13 @@
 package de.nekrozofbrionac.player.control
 
+import Player
 import de.nekrozofbrionac.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
 
 interface PlayerControl {
   fun win(pov: PlayerPov): Boolean
   fun chooseDiscard(pov: PlayerPov): TileType
+  fun kongFromDraw(pov: PlayerPov): Boolean
   fun kongFromDiscard(pov: PlayerPov): Boolean
   fun pongFromDiscard(pov: PlayerPov): Boolean
   /** @return Starting tile for a chow, if null, it means no */

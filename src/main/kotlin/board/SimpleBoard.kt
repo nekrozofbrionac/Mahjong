@@ -31,6 +31,7 @@ class SimpleBoard : Board {
   init {
     TileType.entries.forEach { tile ->
       repeat(tile.count) { this.wall.add(tile); }
+      this.wall.shuffle();
     }
   }
 }

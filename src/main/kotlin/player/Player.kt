@@ -18,6 +18,10 @@ interface Player {
   // Forms a Chow indicated by its first tile.
   fun formChowMeld(tile: TileType);
 
+  fun isKongAvailableFromDraw(tile: TileType): Boolean {
+    return hand.count { it == tile } >= 4;
+  }
+
   fun isKongAvailableInHand(tile: TileType): Boolean {
     return hand.count { it == tile } >= 3;
   }

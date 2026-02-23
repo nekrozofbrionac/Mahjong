@@ -13,7 +13,7 @@ class InitialState : GameState {
       game.turnPlayer++
     }
 
-    game.gameState = PlayerTurnStartState();
+    game.gameState = PlayerDrawsState();
     game.handleStateChange();
   }
 }

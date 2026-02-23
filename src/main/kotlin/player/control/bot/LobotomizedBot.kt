@@ -17,6 +17,14 @@ class LobotomizedBot(
     return p.hand.random();
   }
 
+  override fun kongFromDraw(pov: PlayerPov): Boolean {
+    if (verbose) {
+      printPov(pov)
+      println("Lobotomized Bot (${pov.playerSeat}) says: LETS KONG FROM DRAW! ${pov.hand.last()}")
+    }
+    return true;
+  }
+
   override fun kongFromDiscard(pov: PlayerPov): Boolean {
     if (pov.discarded.isEmpty()) {
       return false
@@ -24,7 +32,7 @@ class LobotomizedBot(
 
     if (verbose) {
       printPov(pov)
-      println("Lobotomized Bot (${pov.playerSeat}) says: LETS KONG! ${pov.discarded.last()}")
+      println("Lobotomized Bot (${pov.playerSeat}) says: LETS KONG FROM DISCARD! ${pov.discarded.last()}")
     }
     return true;
   }

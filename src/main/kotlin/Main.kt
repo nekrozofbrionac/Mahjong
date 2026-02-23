@@ -11,14 +11,15 @@ fun main() {
   println("Mahjong")
 
   val winners = mutableListOf<Turn?>()
-  val maxGames = 1
-  val verbose = true
+  val maxGames = 10000
+  val verbose = false
   repeat(maxGames) {
     val game = Game(
+      // TerminalPlayer(),
       BotPlayer(LobotomizedBot(verbose = verbose)),
       BotPlayer(PongSpeedRunBot(verbose = verbose)),
-      BotPlayer(LobotomizedBot(verbose = verbose)),
-      BotPlayer(LobotomizedBot(verbose = verbose)),
+      BotPlayer(PongSpeedRunBot(verbose = verbose)),
+      BotPlayer(PongSpeedRunBot(verbose = verbose)),
       { p, t ->
         winners.add(t)
       },

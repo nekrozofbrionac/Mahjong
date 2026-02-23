@@ -41,6 +41,14 @@ class PongSpeedRunBot(
       ?: pov.hand.random();
   }
 
+  override fun kongFromDraw(pov: PlayerPov): Boolean {
+    if (verbose) {
+      printPov(pov)
+      println("Pong Speedrun Bot (${pov.playerSeat}) says: LETS KONG FROM DRAW! ${pov.hand.last()}")
+    }
+    return true;
+  }
+
   override fun kongFromDiscard(pov: PlayerPov): Boolean {
     if (pov.discarded.isEmpty()) {
       return false
@@ -48,7 +56,7 @@ class PongSpeedRunBot(
 
     if (verbose) {
       printPov(pov)
-      println("Pong Speedrun Bot (${pov.playerSeat}) says: LETS KONG! ${pov.discarded.last()}")
+      println("Pong Speedrun Bot (${pov.playerSeat}) says: LETS KONG FROM DISCARD! ${pov.discarded.last()}")
     }
     return true;
   }

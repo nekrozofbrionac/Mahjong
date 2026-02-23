@@ -36,7 +36,7 @@ class PlayerDiscardsState : GameState {
           kongPlayer.formKongMeld(poppedDiscard);
           game.turnPlayer = kongIndex;
           game.turn++;
-          game.gameState = PlayerTurnStartState()
+          game.gameState = PlayerDrawsState()
           game.handleStateChange();
           return;
         }
@@ -76,7 +76,7 @@ class PlayerDiscardsState : GameState {
 
     game.turnPlayer++
     game.turn++;
-    game.gameState = PlayerTurnStartState()
+    game.gameState = PlayerDrawsState()
     game.handleStateChange();
   }
 }

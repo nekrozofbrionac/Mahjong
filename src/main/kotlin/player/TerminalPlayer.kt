@@ -33,12 +33,27 @@ class TerminalPlayer : AbstractPlayer() {
       }
     }
 
+    override fun kongFromDraw(pov: PlayerPov): Boolean {
+      printPov(pov);
+
+      return interact("Kong with drawn tile ${pov.hand.last().name.lowercase()}? (y/n)") { l ->
+        when (l.trim().lowercase()) {
+          "y" -> true
+          "yes" -> true
+          "true" -> true
+          "n" -> false
+          "no" -> false
+          "false" -> false
+          else -> null
+        }
+      }
+    }
+
     override fun kongFromDiscard(pov: PlayerPov): Boolean {
       printPov(pov);
       if (pov.discarded.isEmpty()) {
         throw UnsupportedOperationException("Option to kong even though there are no discards?")
       }
-
 
       return interact("Kong with ${pov.discarded.last().name.lowercase()}? (y/n)") { l ->
         when (l.trim().lowercase()) {
@@ -58,6 +73,7 @@ class TerminalPlayer : AbstractPlayer() {
       if (pov.discarded.isEmpty()) {
         throw UnsupportedOperationException("Option to pong even though there are no discards?")
       }
+
       return interact("Pong with ${pov.discarded.last().name.lowercase()}? (y/n)") { l ->
         when (l.trim().lowercase()) {
           "y" -> true
