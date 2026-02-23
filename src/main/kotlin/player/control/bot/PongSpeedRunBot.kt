@@ -5,6 +5,10 @@ import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.player.control.PlayerControl
 
 object PongSpeedRunBot: PlayerControl{
+  override fun win(pov: PlayerPov): Boolean {
+    return true;
+  }
+
   override fun chooseDiscard(pov: PlayerPov): TileType {
     return pov.hand.find { handTile -> pov.hand.count { it == handTile } == 1 }
       ?: pov.hand.random();

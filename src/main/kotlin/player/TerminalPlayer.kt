@@ -7,6 +7,22 @@ import de.nekrozofbrionac.printPov
 
 class TerminalPlayer : AbstractPlayer() {
   override val playerControl: PlayerControl = object : PlayerControl {
+    override fun win(pov: PlayerPov): Boolean {
+      printPov(pov)
+
+      return interact("Win?") { l ->
+        when (l.trim().lowercase()) {
+          "y" -> true
+          "yes" -> true
+          "true" -> true
+          "n" -> false
+          "no" -> false
+          "false" -> false
+          else -> null
+        }
+      }
+    }
+
     override fun chooseDiscard(pov: PlayerPov): TileType {
       printPov(pov);
       return interact("Name a tile to discard, e.g. \"b1\":") { l ->

@@ -5,6 +5,10 @@ import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.player.control.PlayerControl
 
 object LobotomizedBot: PlayerControl {
+  override fun win(pov: PlayerPov): Boolean {
+    return true;
+  }
+
   override fun chooseDiscard(p: PlayerPov): TileType {
     return p.hand.random();
   }

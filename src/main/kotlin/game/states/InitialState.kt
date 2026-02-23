@@ -6,7 +6,7 @@ import de.nekrozofbrionac.draw
 
 class InitialState : GameState {
   override fun onStateEntry(game: Game) {
-    repeat(12 * 4) {
+    repeat(13 * 4) {
       if (!draw(game.board, game.getCurrentPlayer())) {
         throw UnsupportedOperationException("The wall is too empty to start the game, how");
       }

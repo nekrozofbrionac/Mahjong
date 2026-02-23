@@ -13,9 +13,19 @@ enum class Turn {
   SOUTH,
   WEST,
   NORTH,
+
+  ;
+
+  companion object {
+    fun getByIndex(index: Int): Turn {
+      return Turn.entries[(index + 4) % 4]
+    }
+  }
 }
 
 data class PlayerPov(
+  val turn: Int,
+  val currentTurnPlayer: Turn,
   val playerSeat: Turn,
 
   val prevSeat: Turn,
@@ -96,10 +106,12 @@ class Game(
     val oppo = getPlayerByIndex(index + 2)
 
     return PlayerPov(
-      playerSeat = Turn.entries[index],
-      prevSeat = Turn.entries[index+3 % 4],
-      nextSeat = Turn.entries[index+1 % 4],
-      oppoSeat = Turn.entries[index+2 % 4],
+      turn = turn,
+      currentTurnPlayer = Turn.getByIndex(turnPlayer),
+      playerSeat = Turn.getByIndex(index),
+      prevSeat = Turn.getByIndex(index - 1),
+      nextSeat = Turn.getByIndex(index + 1),
+      oppoSeat = Turn.getByIndex(index + 2),
       prevMelds = prev.melds,
       nextMelds = next.melds,
       oppoMelds = oppo.melds,
@@ -139,6 +151,6 @@ class Game(
     println("    Melds:")
     getCurrentPlayer().melds.forEach { println(formatTiles(it, 16)) }
     println("    Flowers:")
-    println(formatTiles(getCurrentPlayer().flowers, 18 ))
+    println(formatTiles(getCurrentPlayer().flowers, 18))
   }
 }

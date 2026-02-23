@@ -11,10 +11,11 @@ fun main() {
 
   val game = Game(
     TerminalPlayer(),
-    // BotPlayer(PongSpeedRunBot),
     BotPlayer(PongSpeedRunBot),
     BotPlayer(PongSpeedRunBot),
     BotPlayer(PongSpeedRunBot),
+    //BotPlayer(PongSpeedRunBot),
+    //BotPlayer(PongSpeedRunBot),
   );
   game.start();
 }
