@@ -12,6 +12,11 @@ class WinState : GameState {
     val winningMelds = determineAverageWin(winner.hand, winner.melds)
       ?: throw UnsupportedOperationException("Why are we in the winning game state when we didnt win?")
 
+    if (!game.verbose) {
+      game.terminate();
+      return;
+    }
+
     val prevPlayer = game.getPlayerByIndex(game.turnPlayer - 1)
     val prevSeat = Turn.getByIndex(game.turnPlayer - 1)
     val nextPlayer = game.getPlayerByIndex(game.turnPlayer + 1)

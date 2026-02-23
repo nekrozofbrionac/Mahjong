@@ -3,14 +3,41 @@ package de.nekrozofbrionac.player.control.bot
 import de.nekrozofbrionac.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.player.control.PlayerControl
+import de.nekrozofbrionac.printPov
 
-object PongSpeedRunBot: PlayerControl{
+class PongSpeedRunBot(
+  val verbose: Boolean = false
+) : PlayerControl {
+
   override fun win(pov: PlayerPov): Boolean {
     return true;
   }
 
   override fun chooseDiscard(pov: PlayerPov): TileType {
-    return pov.hand.find { handTile -> pov.hand.count { it == handTile } == 1 }
+    val unusableTiles = mutableListOf<TileType>()
+    unusableTiles.addAll(pov.discarded)
+    unusableTiles.addAll(pov.melds.flatten())
+    unusableTiles.addAll(pov.prevMelds.flatten())
+    unusableTiles.addAll(pov.nextMelds.flatten())
+    unusableTiles.addAll(pov.oppoMelds.flatten())
+
+    val unpongableCandidates = pov.hand
+      .filter { ht -> unusableTiles.count { ht == it } > 1 }
+
+    if (unpongableCandidates.isNotEmpty()) {
+      return unpongableCandidates.random();
+    }
+
+
+    val unlikelyPongCandidate = pov.hand
+      .filter { ht -> unusableTiles.count { ht == it } == 1 }
+      .find { ht -> pov.hand.count { ht == it } < 2 }
+    if (null != unlikelyPongCandidate) {
+      return unlikelyPongCandidate;
+    }
+
+
+    return pov.hand.find { ht -> pov.hand.count { ht == it } < 2 }
       ?: pov.hand.random();
   }
 
@@ -19,7 +46,10 @@ object PongSpeedRunBot: PlayerControl{
       return false
     }
 
-    println("PONG SPEED RUN BOT SAYS: LETS KONG! ${pov.discarded.last()}")
+    if (verbose) {
+      printPov(pov)
+      println("Pong Speedrun Bot (${pov.playerSeat}) says: LETS KONG! ${pov.discarded.last()}")
+    }
     return true;
   }
 
@@ -28,12 +58,18 @@ object PongSpeedRunBot: PlayerControl{
       return false
     }
 
-    println("PONG SPEED RUN BOT SAYS: LETS PONG! ${pov.discarded.last()}")
+    if (verbose) {
+      printPov(pov)
+      println("Pong Speedrun Bot (${pov.playerSeat}) says: LETS PONG! ${pov.discarded.last()}")
+    }
     return true;
   }
 
-  override fun chowFromDiscard(pov: PlayerPov): TileType?{
-    println("PONG SPEED RUN BOT SAYS: I WILL NEVER CHOW!!!")
+  override fun chowFromDiscard(pov: PlayerPov): TileType? {
+    if (verbose) {
+      printPov(pov)
+      println("Pong Speedrun Bot (${pov.playerSeat}) says: I WILL NEVER CHOW!!!")
+    }
     return null;
   }
 }

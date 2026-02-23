@@ -5,7 +5,10 @@ import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.player.control.PlayerControl
 import de.nekrozofbrionac.printPov
 
-object LobotomizedBot: PlayerControl {
+class LobotomizedBot(
+  val verbose: Boolean = false
+) : PlayerControl {
+
   override fun win(pov: PlayerPov): Boolean {
     return true;
   }
@@ -19,7 +22,10 @@ object LobotomizedBot: PlayerControl {
       return false
     }
 
-    println("LOBOTOMIZED BOT SAYS: LETS KONG! ${pov.discarded.last()}")
+    if (verbose) {
+      printPov(pov)
+      println("Lobotomized Bot (${pov.playerSeat}) says: LETS KONG! ${pov.discarded.last()}")
+    }
     return true;
   }
 
@@ -28,7 +34,10 @@ object LobotomizedBot: PlayerControl {
       return false
     }
 
-    println("LOBOTOMIZED BOT SAYS: LETS PONG! ${pov.discarded.last()}")
+    if (verbose) {
+      printPov(pov)
+      println("Lobotomized Bot (${pov.playerSeat}) says: LETS PONG! ${pov.discarded.last()}")
+    }
     return true;
   }
 
@@ -46,7 +55,10 @@ object LobotomizedBot: PlayerControl {
 
     val choice = possiblities.random()
 
-    println("LOBOTOMIZED BOT SAYS: LETS CHOW! ${choice.first()}")
+    if (verbose) {
+      printPov(pov)
+      println("Lobotomized Bot (${pov.playerSeat}) says: LETS CHOW! ${choice.first()}")
+    }
     return choice.first();
   }
 }

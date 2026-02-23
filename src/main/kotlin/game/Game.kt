@@ -4,6 +4,7 @@ import GameState
 import Player
 import de.nekrozofbrionac.board.SimpleBoard
 import de.nekrozofbrionac.formatTiles
+import de.nekrozofbrionac.game.states.DrawnState
 import de.nekrozofbrionac.game.states.InitialState
 import de.nekrozofbrionac.mahjong.board.Board
 import de.nekrozofbrionac.mahjong.board.TileType
@@ -52,7 +53,9 @@ class Game(
   val playerEast: Player,
   val playerSouth: Player,
   val playerWest: Player,
-  val playerNorth: Player
+  val playerNorth: Player,
+  val onTermination: (Player?, Turn?) -> Unit = { _, _ -> Unit },
+  val verbose: Boolean = false,
 ) {
   val board: Board = SimpleBoard();
   val wind: Int = 0;
@@ -127,25 +130,34 @@ class Game(
   }
 
   fun handleStateChange() {
-    //printGame();
+    if (verbose) {
+      printGame();
+    }
     this.gameState.onStateEntry(this);
   }
 
 
   fun terminate() {
-    println("This game is over.");
+    if (verbose) {
+      println("This game is over.");
+    }
+    if (gameState.javaClass == DrawnState().javaClass) {
+      onTermination(null, null)
+    } else {
+      onTermination(getCurrentPlayer(), Turn.getByIndex(turnPlayer))
+    }
   }
 
   private fun printGame() {
     println()
     println()
     println("Current game state: ${gameState.javaClass.name.substringAfterLast(".")}")
-    println("Current player: $turnPlayer")
+    println("Current player: ${Turn.getByIndex(turnPlayer)}")
     println("Board:")
     println("    Wall remaining: ${board.wall.size}")
     println("    Discard pile:")
     println(formatTiles(board.discarded, 18))
-    println("Current player ($turnPlayer):")
+    println("Current player: ${Turn.getByIndex(turnPlayer)}")
     println("    Hand:")
     println(formatTiles(getCurrentPlayer().hand, 18))
     println("    Melds:")
