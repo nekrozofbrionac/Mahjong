@@ -1,10 +1,10 @@
-package de.nekrozofbrionac.game.states
+package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.determineAverageWin
-import de.nekrozofbrionac.formatTiles
-import de.nekrozofbrionac.game.Game
-import de.nekrozofbrionac.game.Turn
+import de.nekrozofbrionac.mahjong.determineAverageWin
+import de.nekrozofbrionac.mahjong.formatTiles
+import de.nekrozofbrionac.mahjong.game.Game
+import de.nekrozofbrionac.mahjong.game.Turn
 
 class WinState : GameState {
   override fun onStateEntry(game: Game) {

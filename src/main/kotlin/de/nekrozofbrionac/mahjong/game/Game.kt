@@ -1,11 +1,11 @@
-package de.nekrozofbrionac.game
+package de.nekrozofbrionac.mahjong.game
 
 import GameState
 import Player
-import de.nekrozofbrionac.board.SimpleBoard
-import de.nekrozofbrionac.formatTiles
-import de.nekrozofbrionac.game.states.DrawnState
-import de.nekrozofbrionac.game.states.InitialState
+import de.nekrozofbrionac.mahjong.board.SimpleBoard
+import de.nekrozofbrionac.mahjong.formatTiles
+import de.nekrozofbrionac.mahjong.game.states.DrawnState
+import de.nekrozofbrionac.mahjong.game.states.InitialState
 import de.nekrozofbrionac.mahjong.board.Board
 import de.nekrozofbrionac.mahjong.board.TileType
 

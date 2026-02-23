@@ -1,7 +1,7 @@
-package de.nekrozofbrionac
+package de.nekrozofbrionac.mahjong
 
 import Player
-import de.nekrozofbrionac.game.PlayerPov
+import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.Board
 import de.nekrozofbrionac.mahjong.board.TileType
 

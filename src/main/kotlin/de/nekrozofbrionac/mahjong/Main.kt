@@ -1,11 +1,11 @@
-package de.nekrozofbrionac
+package de.nekrozofbrionac.mahjong
 
-import de.nekrozofbrionac.game.Game
-import de.nekrozofbrionac.game.Turn
-import de.nekrozofbrionac.player.BotPlayer
-import de.nekrozofbrionac.player.TerminalPlayer
-import de.nekrozofbrionac.player.control.bot.LobotomizedBot
-import de.nekrozofbrionac.player.control.bot.PongSpeedRunBot
+import de.nekrozofbrionac.mahjong.game.Game
+import de.nekrozofbrionac.mahjong.game.Turn
+import de.nekrozofbrionac.mahjong.player.BotPlayer
+import de.nekrozofbrionac.mahjong.player.TerminalPlayer
+import de.nekrozofbrionac.mahjong.player.control.bot.LobotomizedBot
+import de.nekrozofbrionac.mahjong.player.control.bot.PongSpeedRunBot
 
 fun main() {
   println("Mahjong")

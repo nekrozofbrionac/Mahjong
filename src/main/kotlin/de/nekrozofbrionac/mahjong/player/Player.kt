@@ -1,5 +1,5 @@
 import de.nekrozofbrionac.mahjong.board.TileType
-import de.nekrozofbrionac.player.control.PlayerControl
+import de.nekrozofbrionac.mahjong.player.control.PlayerControl
 
 interface Player {
   val playerControl: PlayerControl

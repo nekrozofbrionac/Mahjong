@@ -1,10 +1,10 @@
-package de.nekrozofbrionac.player
+package de.nekrozofbrionac.mahjong.player
 
-import de.nekrozofbrionac.formatTiles
-import de.nekrozofbrionac.game.PlayerPov
+import de.nekrozofbrionac.mahjong.formatTiles
+import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
-import de.nekrozofbrionac.player.control.PlayerControl
-import de.nekrozofbrionac.printPov
+import de.nekrozofbrionac.mahjong.player.control.PlayerControl
+import de.nekrozofbrionac.mahjong.printPov
 
 class TerminalPlayer : AbstractPlayer() {
   override val playerControl: PlayerControl = object : PlayerControl {

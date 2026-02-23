@@ -1,9 +1,9 @@
-package de.nekrozofbrionac.game.states
+package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.determineAverageWin
-import de.nekrozofbrionac.game.Game
-import de.nekrozofbrionac.draw
+import de.nekrozofbrionac.mahjong.determineAverageWin
+import de.nekrozofbrionac.mahjong.game.Game
+import de.nekrozofbrionac.mahjong.draw
 
 class PlayerDrawsState : GameState {
 

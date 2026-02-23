@@ -1,8 +1,8 @@
-package de.nekrozofbrionac.game.states
+package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.game.Game
-import de.nekrozofbrionac.draw
+import de.nekrozofbrionac.mahjong.game.Game
+import de.nekrozofbrionac.mahjong.draw
 
 class InitialState : GameState {
   override fun onStateEntry(game: Game) {

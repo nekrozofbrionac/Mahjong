@@ -1,9 +1,9 @@
-package de.nekrozofbrionac.player.control.bot
+package de.nekrozofbrionac.mahjong.player.control.bot
 
-import de.nekrozofbrionac.game.PlayerPov
+import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
-import de.nekrozofbrionac.player.control.PlayerControl
-import de.nekrozofbrionac.printPov
+import de.nekrozofbrionac.mahjong.player.control.PlayerControl
+import de.nekrozofbrionac.mahjong.printPov
 
 class PongSpeedRunBot(
   val verbose: Boolean = false

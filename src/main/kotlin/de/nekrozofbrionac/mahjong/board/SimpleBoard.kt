@@ -1,4 +1,4 @@
-package de.nekrozofbrionac.board
+package de.nekrozofbrionac.mahjong.board
 
 import de.nekrozofbrionac.mahjong.board.Board
 import de.nekrozofbrionac.mahjong.board.TileType

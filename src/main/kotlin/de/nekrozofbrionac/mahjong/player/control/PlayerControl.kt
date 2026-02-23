@@ -1,7 +1,6 @@
-package de.nekrozofbrionac.player.control
+package de.nekrozofbrionac.mahjong.player.control
 
-import Player
-import de.nekrozofbrionac.game.PlayerPov
+import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
 
 interface PlayerControl {

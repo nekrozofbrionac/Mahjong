@@ -1,4 +1,4 @@
-import de.nekrozofbrionac.game.Game
+import de.nekrozofbrionac.mahjong.game.Game
 
 interface GameState {
   fun onStateEntry(game: Game)
