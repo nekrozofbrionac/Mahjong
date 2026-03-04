@@ -28,6 +28,7 @@ data class PlayerPov(
   val turn: Int,
   val currentTurnPlayer: Turn,
   val playerSeat: Turn,
+  val prevailingWind: Turn,
 
   val prevSeat: Turn,
   val nextSeat: Turn,
@@ -112,6 +113,7 @@ class Game(
       turn = turn,
       currentTurnPlayer = Turn.getByIndex(turnPlayer),
       playerSeat = Turn.getByIndex(index),
+      prevailingWind = Turn.getByIndex(wind),
       prevSeat = Turn.getByIndex(index - 1),
       nextSeat = Turn.getByIndex(index + 1),
       oppoSeat = Turn.getByIndex(index + 2),

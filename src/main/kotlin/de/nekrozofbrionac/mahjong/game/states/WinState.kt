@@ -1,18 +1,28 @@
 package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.mahjong.determineAverageWin
 import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.game.Turn
+import de.nekrozofbrionac.mahjong.hands.evaluateHand
 
 class WinState : GameState {
   override fun onStateEntry(game: Game) {
     val winner = game.getCurrentPlayer()
-    val winningMelds = determineAverageWin(winner.hand, winner.melds)
-      ?: throw UnsupportedOperationException("Why are we in the winning game state when we didnt win?")
+
+    val eval = evaluateHand(
+      Turn.getByIndex(game.wind),
+      Turn.getByIndex(game.turnPlayer),
+      winner.hand,
+      winner.melds,
+      winner.flowers,
+      null
+    )
+    val winningMelds = eval.third
 
     if (!game.verbose) {
+      println("\nWinner: ${Turn.getByIndex(game.turnPlayer)}")
+      println("Winning Hand: ${eval.first} faan ${eval.second}\n              ${winningMelds.joinToString(" ") { formatTiles(it, 16, "") }}")
       game.terminate();
       return;
     }
@@ -27,16 +37,16 @@ class WinState : GameState {
     println()
     println("-------------- WINNER: ${Turn.getByIndex(game.turnPlayer)}-------------")
     println()
-    println("Winning Melds:")
+    println("Winning Hand: ${eval.first} faan ${eval.second}")
     println("    ${winningMelds.joinToString(" ") { formatTiles(it, 16, "") }}")
     println()
     println("Previous player: ${prevSeat}")
     println("    Hand:   ${prevPlayer.melds.joinToString(" ") { formatTiles(it, 16, "") }}  ${formatTiles(prevPlayer.hand, 14, "")}")
     println("    Flowers: ${formatTiles(prevPlayer.flowers, 8, "")}")
-    println("Previous player: ${nextSeat}")
+    println("Next player: ${nextSeat}")
     println("    Hand:   ${nextPlayer.melds.joinToString(" ") { formatTiles(it, 16, "") }}  ${formatTiles(nextPlayer.hand, 14, "")}")
     println("    Flowers: ${formatTiles(nextPlayer.flowers, 8, "")}")
-    println("Previous player: ${oppoSeat}")
+    println("Oppo player: ${oppoSeat}")
     println("    Hand:   ${oppoPlayer.melds.joinToString(" ") { formatTiles(it, 16, "") }}  ${formatTiles(oppoPlayer.hand, 14, "")}")
     println("    Flowers: ${formatTiles(oppoPlayer.flowers, 8, "")}")
     println()

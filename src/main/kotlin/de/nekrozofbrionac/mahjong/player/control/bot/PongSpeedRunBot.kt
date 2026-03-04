@@ -31,13 +31,12 @@ class PongSpeedRunBot(
 
     val unlikelyPongCandidate = pov.hand
       .filter { ht -> unusableTiles.count { ht == it } == 1 }
-      .find { ht -> pov.hand.count { ht == it } < 2 }
-    if (null != unlikelyPongCandidate) {
-      return unlikelyPongCandidate;
+      .filter { ht -> pov.hand.count { ht == it } < 2 }
+    if (unlikelyPongCandidate.isNotEmpty()) {
+      return unlikelyPongCandidate.random();
     }
 
-
-    return pov.hand.find { ht -> pov.hand.count { ht == it } < 2 }
+    return pov.hand.filter { ht -> pov.hand.count { ht == it } < 2 }.randomOrNull()
       ?: pov.hand.random();
   }
 

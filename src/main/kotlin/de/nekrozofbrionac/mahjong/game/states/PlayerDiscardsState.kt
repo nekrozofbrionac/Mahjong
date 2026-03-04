@@ -1,8 +1,10 @@
 package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.mahjong.determineAverageWin
+import de.nekrozofbrionac.mahjong.hands.determineAverageWin
 import de.nekrozofbrionac.mahjong.game.Game
+import de.nekrozofbrionac.mahjong.game.Turn
+import de.nekrozofbrionac.mahjong.hands.evaluateHand
 
 class PlayerDiscardsState : GameState {
   override fun onStateEntry(game: Game) {
@@ -15,7 +17,18 @@ class PlayerDiscardsState : GameState {
 
     for (winIndex in 0..3) {
       val susWinner = game.getPlayerByIndex(winIndex)
-      if (null != determineAverageWin(susWinner.hand, susWinner.melds, discardedTile)) {
+
+      // find out if winning hand?
+      val eval = evaluateHand(
+        Turn.getByIndex(game.wind),
+        Turn.getByIndex(winIndex),
+        susWinner.hand,
+        susWinner.melds,
+        susWinner.flowers,
+        discardedTile
+      )
+
+      if (eval.first >= 0) {
         if (susWinner.playerControl.win(game.compilePlayerPov(winIndex))) {
           susWinner.addToHand(game.board.popLastDiscard());
           game.turnPlayer = winIndex;

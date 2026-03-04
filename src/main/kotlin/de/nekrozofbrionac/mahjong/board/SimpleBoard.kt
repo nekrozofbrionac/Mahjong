@@ -1,8 +1,5 @@
 package de.nekrozofbrionac.mahjong.board
 
-import de.nekrozofbrionac.mahjong.board.Board
-import de.nekrozofbrionac.mahjong.board.TileType
-
 class SimpleBoard : Board {
   override val wall: MutableList<TileType> = mutableListOf();
   override val discarded: MutableList<TileType> = mutableListOf();
