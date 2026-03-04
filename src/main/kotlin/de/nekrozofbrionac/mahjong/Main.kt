@@ -5,6 +5,7 @@ import de.nekrozofbrionac.mahjong.game.Turn
 import de.nekrozofbrionac.mahjong.player.BotPlayer
 import de.nekrozofbrionac.mahjong.player.TerminalPlayer
 import de.nekrozofbrionac.mahjong.player.control.bot.LobotomizedBot
+import de.nekrozofbrionac.mahjong.player.control.bot.NoIdeaAboutHandsBot
 import de.nekrozofbrionac.mahjong.player.control.bot.PongSpeedRunBot
 
 fun main() {
@@ -19,8 +20,8 @@ fun main() {
       BotPlayer(LobotomizedBot(verbose = verbose)),
       BotPlayer(PongSpeedRunBot(verbose = verbose)),
       BotPlayer(PongSpeedRunBot(verbose = verbose)),
-      BotPlayer(PongSpeedRunBot(verbose = verbose)),
-      //BotPlayer(NoIdeaAboutHandsBot(iterations = 100)),
+      //BotPlayer(PongSpeedRunBot(verbose = verbose)),
+      BotPlayer(NoIdeaAboutHandsBot(iterations = 100)),
       //BotPlayer(NoIdeaAboutHandsBot(iterations = 100)),
       { p, t ->
         winners.add(t)
