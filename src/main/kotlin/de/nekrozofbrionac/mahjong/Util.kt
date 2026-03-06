@@ -68,9 +68,9 @@ fun formatTiles(tiles: List<TileType>, perLine: Int, padLeft: String = "        
         }
       }
 
-      val tileEngraving = if (it.suit != null)
-        it.shortHand.lowercase().padEnd(maxLength)
-      else {
+      val tileEngraving = if (it.suit != null) {
+        it.shortHand.substring(1, 2).lowercase().padStart(maxLength)
+      } else {
         it.shortHand.uppercase().padEnd(maxLength)
       }
 
@@ -78,7 +78,6 @@ fun formatTiles(tiles: List<TileType>, perLine: Int, padLeft: String = "        
 
       return@map "$color $tileEngraving $resetColor"
     }
-
     .chunked(perLine)
     .joinToString("\n") { padLeft.plus(it.joinToString(" ")) }
 }

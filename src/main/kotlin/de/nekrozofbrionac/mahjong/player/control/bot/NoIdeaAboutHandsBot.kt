@@ -4,17 +4,20 @@ import de.nekrozofbrionac.mahjong.board.SimpleBoard
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.PlayerPov
-import de.nekrozofbrionac.mahjong.hands.evaluateStandardHand
+import de.nekrozofbrionac.mahjong.game.Turn
+import de.nekrozofbrionac.mahjong.hands.*
 import de.nekrozofbrionac.mahjong.player.control.PlayerControl
 import de.nekrozofbrionac.mahjong.printPov
 import kotlin.Double.Companion.NaN
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.pow
 
 val mahjongSet = SimpleBoard().wall.filter { !it.isFlower() }.toList()
 
 class NoIdeaAboutHandsBot(
   val iterations: Int = 10000,
+  val minFaan: Int = 3,
 ) : PlayerControl {
 
   override fun win(pov: PlayerPov): Boolean {
@@ -24,8 +27,8 @@ class NoIdeaAboutHandsBot(
   override fun chooseDiscard(pov: PlayerPov): TileType {
     printPov(pov)
     println("I have to discard...")
-    println("Thinking for $iterations iterations...")
-    val searchOutcome = search(iterations, pov)
+    println("Thinking up to $iterations win ways to win...")
+    val searchOutcome = search(iterations, pov, minFaan)
     printSearchResults(searchOutcome)
     println("I will discard ${formatTiles(listOf(searchOutcome.tileProbabilities[0].first), 1, "")}.")
     return searchOutcome.tileProbabilities[0].first
@@ -43,14 +46,18 @@ class NoIdeaAboutHandsBot(
 
   override fun pongFromDiscard(pov: PlayerPov): Boolean {
     printPov(pov)
-    println("I can pong...")
-    println("I am thinking about not ponging at all... for $iterations times.")
-    val searchNoPong = search(iterations, pov)
-    println("After thinking about not ponging i came up with:")
-    printSearchResults(searchNoPong)
-    println("Keep in mind i started with 13 tiles when searching, not 14")
 
     val pongedTile = pov.discarded.last()
+    val formattedPong = formatTiles(listOf(pongedTile, pongedTile, pongedTile), 3, "")
+    println("I can pong with $formattedPong !")
+
+    println("Thinking about not ponging up to $iterations future wins...")
+    val searchNoPong = search(iterations, pov, minFaan)
+
+    println("After thinking about not ponging I came up with:")
+    printSearchResults(searchNoPong)
+    println("Keep in mind i started with 13 tiles when searching, not 14, so average depth is 1 larger than it should")
+
     val copyOfHand = pov.hand.toMutableList()
     val copyOfMelds = pov.melds.toMutableList()
 
@@ -62,52 +69,44 @@ class NoIdeaAboutHandsBot(
       melds = copyOfMelds,
       discarded = pov.discarded.dropLast(1),
     )
-    println(
-      "I am thinking about ponging with ${
-        formatTiles(
-          listOf(pongedTile, pongedTile, pongedTile),
-          3,
-          ""
-        )
-      }... for $iterations times."
-    )
-    val searchWithPong = search(iterations, povAfterPong)
-    println(
-      "After thinking about chowing with ${
-        formatTiles(
-          listOf(pongedTile, pongedTile, pongedTile),
-          3,
-          ""
-        )
-      } i came up with:"
-    )
+    println("Thinking about ponging with $formattedPong up to $iterations wins...")
+    val searchWithPong = search(iterations, povAfterPong, minFaan)
+    println("After thinking about pong with $formattedPong i came up with:")
     printSearchResults(searchWithPong)
 
-
-    val noPongTerm = pathCost(searchNoPong.averageDepth / iterations.toDouble(), searchNoPong.averageDepth + 1)
-    val withPongTerm = pathCost(searchWithPong.averageDepth / iterations.toDouble(), searchWithPong.averageDepth)
+    // -1 because of needing one tile more for 14
+    val noPongTerm = pathCost(
+      searchNoPong.predictedWins.toDouble() / searchNoPong.actualIterations.toDouble(),
+      searchNoPong.averageDepth - 1
+    )
+    val withPongTerm = pathCost(
+      searchWithPong.predictedWins.toDouble() / searchNoPong.actualIterations.toDouble(),
+      searchWithPong.averageDepth
+    )
 
     val output = withPongTerm <= noPongTerm
-    println("After thinking about it, I think I will go with ${if (output) "ponging" else "not ponging"} ($noPongTerm no Pong, $withPongTerm with Pong).")
+    println("After thinking about it, I will go with ${if (output) formattedPong else "not ponging"} ($noPongTerm no Pong, $withPongTerm with Pong).")
     return output
   }
 
   override fun chowFromDiscard(pov: PlayerPov): TileType? {
     printPov(pov)
-    println("I can chow...")
-    val possiblities = determineChowPossibilities(pov.hand, pov.discarded.last());
+    val detectedChows = determineChowPossibilities(pov.hand, pov.discarded.last());
+    val formattedChows = detectedChows.associateWith { formatTiles(it, 3, "") }
+    val costMap = mutableMapOf<List<TileType>?, Double>();
 
-    println("I am thinking about not chowing at all... for $iterations times.")
-
+    println("I can chow with ${formattedChows.values.joinToString(", ")} !")
+    println("Thinking about not chowing up to $iterations wins.")
     // todo probably not perfect, i am forgetting kongs, but so did i within search
-    val searchNoChow = search(iterations, pov) // keep in mind that this starts with 13 tiles instead of 14
+    val searchNoChow = search(iterations, pov, minFaan) // keep in mind that this starts with 13 tiles instead of 14
     println("After thinking about not chowing i came up with:")
     printSearchResults(searchNoChow)
+
     println("Keep in mind that i thought about it using 1 tile less, so the amount of tiles i needed to ’draw' in my head is greater")
+    costMap[null] =
+      pathCost(searchNoChow.predictedWins.toDouble() / searchNoChow.actualIterations, searchNoChow.averageDepth - 1)
 
-
-    val chowMap = mutableMapOf<TileType, SearchOutcome>();
-    possiblities.forEach { chow ->
+    detectedChows.forEach { chow ->
 
       val copyOfHand = pov.hand.toMutableList()
       val copyOfMelds = pov.melds.toMutableList()
@@ -121,35 +120,22 @@ class NoIdeaAboutHandsBot(
         melds = copyOfMelds,
         discarded = pov.discarded.dropLast(1)
       )
-      println("I am thinking about chowing with ${formatTiles(chow, 3, "")}... for $iterations times.")
-      chowMap[chow[0]] = search(iterations, hypotheticalPovAfterChow)
-      println("After thinking about chowing with ${formatTiles(chow, 3, "")} i came up with:")
-      printSearchResults(chowMap[chow[0]]!!)
+      println("Thinking about chowing with ${formattedChows[chow]} for up to $iterations wins.")
+      val r = search(iterations, hypotheticalPovAfterChow, minFaan)
+      costMap[chow] = pathCost(r.predictedWins.toDouble() / r.actualIterations.toDouble(), r.averageDepth)
+      println("After thinking about chowing with ${formattedChows[chow]} i came up with:")
+      printSearchResults(r)
     }
 
     // chose the smallest average?
     // probably smaller mse if too similar?
 
+    val pathCosts = costMap.toList().sortedBy { it.second }
+    val tileToPrint = if (null == pathCosts[0].first) "none" else formattedChows[pathCosts[0].first]
 
-    val results: MutableList<Pair<TileType?, SearchOutcome>> =
-      mutableListOf(Pair(null, searchNoChow.copy(averageDepth = searchNoChow.averageDepth + 1))) // extra tile
-    chowMap.forEach { e -> results.add(Pair(e.key, e.value)) }
-
-    val pathCosts = results.map { p ->
-      Pair(
-        p.first,
-        pathCost(p.second.successfulSimulations.toDouble() / p.second.iterations.toDouble(), p.second.averageDepth)
-      )
-    }.toMutableList()
-
-    pathCosts.sortBy { it.second }
-
-
-    val tileToPrint = if (null == pathCosts[0].first) "none" else formatTiles(listOf(pathCosts[0].first!!), 1, "")
-
-    println("After thinking about it ${1 + possiblities.size} times, I think I will go with ${tileToPrint}.")
+    println("After thinking about it ${1 + detectedChows.size} times, I think I will go with ${tileToPrint}.")
     println("PathCosts: ${pathCosts.joinToString(", ") { "(${it.first}, cost: ${it.second})" }}")
-    return pathCosts[0].first;
+    return pathCosts[0].first?.get(0);
   }
 
 
@@ -157,31 +143,33 @@ class NoIdeaAboutHandsBot(
 
 data class SearchOutcome(
   val tileProbabilities: List<Pair<TileType, Double>>,
-  val iterations: Int,
-  val successfulSimulations: Int,
+  val actualIterations: Int,
+  val predictedWins: Int,
   val averageDepth: Double,
   val medianDepth: Int,
   val meanSquareError: Double,
 )
 
-fun search(iterations: Int, initialState: PlayerPov): SearchOutcome {
+fun search(amountOfWinsFound: Int, initialState: PlayerPov, minFaan: Int): SearchOutcome {
+  val cancelAtPerWin = 10000
   val tilesToDraw = determineHiddenTiles(initialState);
   val futures = mutableListOf<Pair<List<List<TileType>>, List<TileType>>>()
   val tally: MutableMap<TileType, Double> = mutableMapOf<TileType, Double>()
-  // loop
-  // draw tiles until win, what tiles not to use
-  // discard what tile was most unused
-
-  // instead of for loop, maybe a while until iterations futures has been found?
-
   // is it possible to win at all?
-  val winPossibility = determineAverageWinWithMoreTiles(initialState, 0, tilesToDraw, initialState.melds)
+  val winPossibility = findStandardWin(
+    minimumFaanRequired = minFaan,
+    hand = tilesToDraw,
+    fixedMelds = initialState.melds,
+    playerWind = initialState.playerSeat,
+    prevailingWind = initialState.prevailingWind
+  )
   if (winPossibility == null) {
+    println("Winning is impossible :(")
     val uselessScore = initialState.hand.shuffled().map { Pair(it, NaN) }
     return SearchOutcome(
       tileProbabilities = uselessScore.map { Pair(it.first, it.second) },
-      iterations = 0,
-      successfulSimulations = 0,
+      actualIterations = 0,
+      predictedWins = 0,
       averageDepth = 0.0,
       medianDepth = 0,
       meanSquareError = 0.0
@@ -189,75 +177,76 @@ fun search(iterations: Int, initialState: PlayerPov): SearchOutcome {
   }
 
   // that means it IS possible to win!
+  // loop
+  // draw tiles until win, what tiles not to use
+  // discard what tile was most unused
 
-  val numberOfCombinations = nOverK(tilesToDraw.size, tilesToDraw.size / 4)
-  val upperBound = min(iterations.toLong(), numberOfCombinations)
+  // instead of for loop, maybe a while until iterations futures has been found?
+
+  val maxTilesToDraw = min(14, tilesToDraw.size / 4)
+  val numberOfPermutations = numberOfPermutations(tilesToDraw.size, maxTilesToDraw)
+  val upperBound = min(amountOfWinsFound.toLong(), numberOfPermutations)
 
   val seqGen = RandomTileSequenceGenerator(
     tilesToDraw,
-    tilesToDraw.size/4
+    maxTilesToDraw,
   )
 
-  println("upperBound: $upperBound, numberOfCombinations: $numberOfCombinations")
+  println("winsToFind: $upperBound, numberOfPermutations: ${if (numberOfPermutations == Long.MAX_VALUE) "Long.MAX_VALUE" else numberOfPermutations}, picking $maxTilesToDraw of ${tilesToDraw.size} tiles.")
   var runCounter = 0;
-  while (seqGen.existingSequences.size < numberOfCombinations && futures.size < iterations) { // ok, for i in again
+  while (
+    //seqGen.existingSequences.size < numberOfPermutations &&
+    runCounter < numberOfPermutations &&
+    futures.size < amountOfWinsFound &&
+    (runCounter < 5 * cancelAtPerWin || runCounter < futures.size * cancelAtPerWin)
+  ) { // ok, for i in again
     runCounter++;
     val hypotheticalRestToDraw = seqGen.generateRandomSequence()
-    // val hypotheticalRestToDraw = generateRandomSequence(triedHypotheticals, tilesToDraw, tilesToDraw.size / 4)
-    // val hypotheticalRestToDraw = tilesToDraw.shuffled().subList(0, tilesToDraw.size / 4)
-    if (hypotheticalRestToDraw.isEmpty()) {
-      throw UnsupportedOperationException ("HOW is this empty=!!?!??!?!")
+
+    val hypotheticalWinPossibility = findStandardWin(
+      minimumFaanRequired = minFaan,
+      hand = initialState.hand + hypotheticalRestToDraw,
+      fixedMelds = initialState.melds,
+      playerWind = initialState.playerSeat,
+      prevailingWind = initialState.prevailingWind,
+    )
+    if (null == hypotheticalWinPossibility) {
+      continue;
     }
-    /*
-    if (seqGen.existingSequences.contains(hypotheticalRestToDraw)) {
-      println("hey, i already tried this :( also we tried ${seqGen.existingSequences.size} combinations")
-    }
-    */
 
     for (j in 1..hypotheticalRestToDraw.size) {
       val hypotheticalSuperHand = initialState.hand + hypotheticalRestToDraw.subList(0, j)
       // win detected
-      val result = determineAverageWinWithMoreTiles(initialState, 3, hypotheticalSuperHand, initialState.melds)
+      val result = findStandardWin(
+        minimumFaanRequired = minFaan,
+        hand = hypotheticalSuperHand,
+        fixedMelds = initialState.melds,
+        playerWind = initialState.playerSeat,
+        prevailingWind = initialState.prevailingWind,
+      )
       if (null != result) {
         futures.add(Pair(result.first, result.second))
+        //print("\rfutures: ${futures.size}; runCounter: $runCounter; existingSequences: ${seqGen.existingSequences.size}; runCounter == existingSequences: ${runCounter == seqGen.existingSequences.size}")
+        print("\rfutures: ${futures.size}; runCounter: $runCounter")
         break;
       }
     }
   }
-
-
+  println()
   futures.sortBy { it.second.size }
 
-  /*
-  val initialHand = initialState.hand.toMutableList()
-  initialHand.addAll(initialState.melds.flatten()) // kongs will be weird.
-  initialHand.sort()
+  val minRestHandSize: Int = futures.minOfOrNull { it.second.size } ?: 0
 
-  val winningMeldsMap = mutableMapOf<List<TileType>, Int>()
 
-  futures.map { it.first.flatten().sorted() }
-    .forEach { winningMeldsMap[it] = (winningMeldsMap[it] ?: 0) + 1 }
-
-  winningMeldsMap
-    .toList()
-    .sortedByDescending{ it.second }
-    .sortedBy { compareHands(initialHand, it.first) }
-    .forEach { p ->
-      println("${formatTiles(p.first, 14, "")} : ${p.second} times, ${compareHands(initialHand, p.first)} diff")
-    }
-  val smallest = futures.firstOrNull()?.second?.size ?: NaN
-  */
   futures.forEach { f ->
-    f.first.flatten().toSet().forEach { tally[it] = (tally[it] ?: 0.0) - (1.0) }
-    f.second.toSet().forEach { tally[it] = (tally[it] ?: 0.0) + (1.0) }
+    f.first.flatten().forEach { tally[it] = (tally[it] ?: 0.0) - 2.0.pow(minRestHandSize - f.second.size) }
+    // f.second.toSet().forEach { tally[it] = (tally[it] ?: 0.0) + (0) }
     // f.second.forEach { tally[it] = (tally[it] ?: 0.0) + (1.0 / ((f.second.size - smallest.toDouble() + 1).pow(2.0))) }
-    // println("Detected future win: " + f.first.joinToString("*") { formatTiles(it, 14, "") })
-    // println("With leftovers: " + formatTiles(f.second, 200, ""))
+    // print("Detected future win: " + f.first.joinToString("*") { formatTiles(it, 14, "") })
+    // println(" With leftovers: " + formatTiles(f.second, 200, ""))
   }
 
-
-  val uselessScore =
-    initialState.hand.toSet().map { Pair(it, (tally[it] ?: -10000.0)) }.sortedByDescending { it.second }
+  val uselessScore = initialState.hand.toSet().map { Pair(it, (tally[it] ?: 0.0)) }.sortedByDescending { it.second }
 
   // println("Run lengths: [ ${futures.map { it.second.size }.joinToString(", ")} ]")
 
@@ -266,9 +255,9 @@ fun search(iterations: Int, initialState: PlayerPov): SearchOutcome {
   val meanSquareError = futures.map { it.second.size }.map { val diff = it - averageDepth; diff * diff }.average()
 
   return SearchOutcome(
-    tileProbabilities = uselessScore.map { Pair(it.first, it.second.toDouble()) },
-    iterations = runCounter,
-    successfulSimulations = futures.size,
+    tileProbabilities = uselessScore.map { Pair(it.first, it.second) },
+    actualIterations = runCounter,
+    predictedWins = futures.size,
     averageDepth = averageDepth,
     medianDepth = medianDepth,
     meanSquareError = meanSquareError
@@ -277,11 +266,11 @@ fun search(iterations: Int, initialState: PlayerPov): SearchOutcome {
 
 
 fun printSearchResults(searchOutcome: SearchOutcome) {
-  println("Thought for ${searchOutcome.iterations} and came up with:")
-  val repetition = min(10, searchOutcome.tileProbabilities.size)
+  println("Thought for ${searchOutcome.actualIterations} and came up with:")
+  val repetition = min(100, searchOutcome.tileProbabilities.size)
   repeat(repetition) {
     println(
-      "$it. : ${
+      "${it.toString().padStart(2)}. : ${
         formatTiles(
           listOf(searchOutcome.tileProbabilities[it].first),
           1,
@@ -290,10 +279,10 @@ fun printSearchResults(searchOutcome: SearchOutcome) {
       } ${searchOutcome.tileProbabilities[it].second}"
     )
   }
-  println("Winnable simulation runs: ${searchOutcome.successfulSimulations}")
-  println("Average simulation run length: ${searchOutcome.averageDepth} Tiles ")
-  println("Average simulation run length mse: ${searchOutcome.meanSquareError} ")
-  println("Median simulation run length: ${searchOutcome.medianDepth} Tiles ")
+  println("Winnable simulation runs: ${searchOutcome.predictedWins}")
+  println("Average tiles drawn: ${searchOutcome.averageDepth} Tiles ")
+  println("Average number of tiles mse: ${searchOutcome.meanSquareError} ")
+  println("Median tiles drawn: ${searchOutcome.medianDepth} Tiles ")
 }
 
 fun determineHiddenTiles(pov: PlayerPov): List<TileType> {
@@ -307,25 +296,22 @@ fun determineHiddenTiles(pov: PlayerPov): List<TileType> {
   return allTiles
 }
 
-fun determineAverageWinWithMoreTiles(
-  initialState: PlayerPov,
+fun findStandardWin(
   minimumFaanRequired: Int = 0,
   hand: List<TileType>, // more than 14 tiles possible
   fixedMelds: List<List<TileType>>,
+  playerWind: Turn,
+  prevailingWind: Turn,
 ): Pair<List<List<TileType>>, List<TileType>>? {
   val sortedHand = hand.sorted();
-  val possibleEyes = sortedHand
-    .filter { st -> sortedHand.count { it == st } >= 2 }
-    .distinct()
+  val possibleEyes = sortedHand.toSet().filter { st -> sortedHand.count { it == st } >= 2 }
 
   possibleEyes.forEach { eyeTile ->
     // remove the eye first
     val mutableRestHand = sortedHand.toMutableList()
     val mutableRestMelds: MutableList<List<TileType>> = mutableListOf()
-    val chowOrphansToIgnore: MutableList<TileType> = mutableListOf()
     repeat(2) { mutableRestHand.remove(eyeTile) }
     mutableRestMelds.add(listOf(eyeTile, eyeTile))
-
 
     // try to find concealed kongs that are a pong and part of a chow
     while (true) {
@@ -336,78 +322,126 @@ fun determineAverageWinWithMoreTiles(
       mutableRestMelds.add(listOf(firstPossibleKong, firstPossibleKong, firstPossibleKong))
     }
 
-    // try to find all chows
-    while (true) {
-      val firstPossibleChow =
-        mutableRestHand.firstOrNull() { st -> mutableRestHand.count { st == it } < 3 && st.numeral != null && st.suit != null }
-          ?: break;
-
-      val susSecond =
-        mutableRestHand.find { it.numeral == firstPossibleChow.numeral?.plus(1) && it.suit == firstPossibleChow.suit }
-      val susThird =
-        mutableRestHand.find { it.numeral == firstPossibleChow.numeral?.plus(2) && it.suit == firstPossibleChow.suit }
-
-      if (null != susSecond && null != susThird) {
-        mutableRestHand.remove(firstPossibleChow)
-        mutableRestHand.remove(susSecond)
-        mutableRestHand.remove(susThird)
-        mutableRestMelds.add(listOf(firstPossibleChow, susSecond, susThird))
-      } else {
-        mutableRestHand.remove(firstPossibleChow)
-        chowOrphansToIgnore.add(firstPossibleChow)
-      }
+    // since we are working with more tiles than a hand, lets count both chows first and pong first
+    val mutableChowFirstMelds = mutableRestMelds.toMutableList()
+    val mutableChowFirstRestHand = mutableRestHand.toMutableList()
+    putAllChowsIntoMelds(mutableChowFirstMelds, mutableChowFirstRestHand)
+    putAllPongsIntoMelds(mutableChowFirstMelds, mutableChowFirstRestHand)
+    val chowResult = evaluateMelds(
+      eyeTile,
+      mutableChowFirstMelds,
+      fixedMelds,
+      mutableChowFirstRestHand,
+      prevailingWind,
+      playerWind,
+      minimumFaanRequired
+    )
+    if (chowResult != null) {
+      return chowResult
     }
 
-    mutableRestHand.addAll(chowOrphansToIgnore)
-    chowOrphansToIgnore.removeAll { true };
-    mutableRestHand.sort()
-
-    // try to find all pongs
-    while (true) {
-      val firstPossiblePong =
-        mutableRestHand.firstOrNull() { st -> mutableRestHand.count { st == it } >= 3 }
-          ?: break;
-      repeat(3) { mutableRestHand.remove(firstPossiblePong) }
-      mutableRestMelds.add(listOf(firstPossiblePong, firstPossiblePong, firstPossiblePong))
+    val mutablePongFirstMelds = mutableRestMelds.toMutableList()
+    val mutablePongFirstRestHand = mutableRestHand.toMutableList()
+    putAllPongsIntoMelds(mutablePongFirstMelds, mutablePongFirstRestHand)
+    putAllChowsIntoMelds(mutablePongFirstMelds, mutablePongFirstRestHand)
+    val pongResult = evaluateMelds(
+      eyeTile,
+      mutablePongFirstMelds,
+      fixedMelds,
+      mutablePongFirstRestHand,
+      prevailingWind,
+      playerWind,
+      minimumFaanRequired
+    )
+    if (pongResult != null) {
+      return pongResult
     }
+  }
+  return null;
+}
 
-    if (mutableRestMelds.size + fixedMelds.size >= 5) { // 1 eye and maybe more than 4 melds, we need to get to more FAAN!
-      // there is only one eye
-      val eyelessMelds = mutableRestMelds.filter { it.size > 2 }.toMutableList();
-      eyelessMelds.combinations(4 - (fixedMelds.size))
-        .forEach {
-          val recombinedEyeMelds = it.toMutableList()
-          recombinedEyeMelds.add(listOf(eyeTile, eyeTile))
-          recombinedEyeMelds.addAll(fixedMelds)
+fun evaluateMelds(
+  eyeTile: TileType,
+  mutableRestMelds: MutableList<List<TileType>>,
+  fixedMelds: List<List<TileType>>,
+  mutableRestHand: MutableList<TileType>,
+  prevailingWind: Turn,
+  playerWind: Turn,
+  minimumFaanRequired: Int,
+): Pair<List<List<TileType>>, List<TileType>>? {
+  if (mutableRestMelds.size + fixedMelds.size >= 5) { // 1 eye and maybe more than 4 melds, we need to get to more FAAN!
+    // there is only one eye
+    val eyelessMelds = mutableRestMelds.filter { it.size > 2 }.toMutableList();
+    eyelessMelds.combinations(4 - (fixedMelds.size))
+      .forEach { meldCombination ->
+        val recombinedEyeMelds = meldCombination.toMutableList()
+        recombinedEyeMelds.add(listOf(eyeTile, eyeTile))
+        recombinedEyeMelds.addAll(fixedMelds)
 
-          val result = evaluateStandardHand(
-            meldsIncludingEye = recombinedEyeMelds,
-            prevWind = initialState.prevailingWind,
-            playerWind = initialState.playerSeat,
-            flowers = initialState.flowers,
-            maxFaan = 13
-          )
+        val result = fastEvaluateStdHand(
+          meldsIncludingEye = recombinedEyeMelds,
+          prevWind = prevailingWind,
+          playerWind = playerWind,
+        )
 
-          if (result.first >= minimumFaanRequired) {
-            for (i in 0..<it.size) {
-              if (!mutableRestMelds.remove(it[i])) {
-                throw UnsupportedOperationException("WHAT THE HELL WHY NOT")
-              }
-            }
-            if (!mutableRestMelds.remove(listOf(eyeTile, eyeTile))) {
-              println("WHAT THE HELL")
-              println(formatTiles(mutableRestMelds.flatten(), 100, ""))
-              throw UnsupportedOperationException("WHAT THE HELL WHY NOT WITH THE EYETILE")
-            }
+        if (result >= minimumFaanRequired) {
+          meldCombination.forEach { m -> mutableRestMelds.remove(m) }
+          mutableRestMelds.remove(listOf(eyeTile, eyeTile))
 
-            mutableRestHand.addAll(mutableRestMelds.flatten())
-            return Pair(recombinedEyeMelds, mutableRestHand)
-          }
+          mutableRestHand.addAll(mutableRestMelds.flatten())
+          return Pair(recombinedEyeMelds, mutableRestHand)
         }
+      }
+  }
+  return null;
+}
+
+/**
+ * An assertion is that mutableRestHands is sorted!
+ */
+fun putAllChowsIntoMelds(
+  mutableRestMelds: MutableList<List<TileType>>,
+  mutableRestHand: MutableList<TileType>
+) {
+  val chowOrphansToIgnore = mutableListOf<TileType>()
+  // try to find all chows
+  while (true) {
+    val susFirst =
+      mutableRestHand.firstOrNull() { st -> mutableRestHand.count { st == it } < 3 && st.numeral != null && st.suit != null }
+        ?: break;
+
+    val susSecond = mutableRestHand.find { it.numeral == susFirst.numeral!! + 1 && it.suit == susFirst.suit }
+    val susThird = mutableRestHand.find { it.numeral == susFirst.numeral!! + 2 && it.suit == susFirst.suit }
+
+    if (null != susSecond && null != susThird) {
+      mutableRestHand.remove(susFirst)
+      mutableRestHand.remove(susSecond)
+      mutableRestHand.remove(susThird)
+      mutableRestMelds.add(listOf(susFirst, susSecond, susThird))
+    } else {
+      mutableRestHand.remove(susFirst)
+      chowOrphansToIgnore.add(susFirst)
     }
   }
 
-  return null;
+  mutableRestHand.addAll(chowOrphansToIgnore)
+  // done.
+}
+
+fun putAllPongsIntoMelds(
+  mutableRestMelds: MutableList<List<TileType>>,
+  mutableRestHand: MutableList<TileType>
+) {
+  // try to find all pongs
+  while (true) {
+    val firstPossiblePong =
+      mutableRestHand.firstOrNull() { st -> mutableRestHand.count { st == it } >= 3 }
+        ?: break;
+    mutableRestHand.remove(firstPossiblePong)
+    mutableRestHand.remove(firstPossiblePong)
+    mutableRestHand.remove(firstPossiblePong)
+    mutableRestMelds.add(listOf(firstPossiblePong, firstPossiblePong, firstPossiblePong))
+  }
 }
 
 fun <T> List<T>.combinations(k: Int): List<List<T>> {
@@ -427,7 +461,7 @@ fun <T> List<T>.combinations(k: Int): List<List<T>> {
 }
 
 fun pathCost(probability: Double, turns: Double): Double {
-  return probability * (turns) + (1 - probability) * 100000
+  return probability * (turns) + (1 - probability) * Integer.MAX_VALUE
 }
 
 fun compareHands(hand: List<TileType>, hand2: List<TileType>): Int {
@@ -439,23 +473,17 @@ fun compareHands(hand: List<TileType>, hand2: List<TileType>): Int {
   return TileType.entries.sumOf { abs((tileMap1[it] ?: 0) - (tileMap2[it] ?: 0)) }
 }
 
-fun nOverK(n: Int, k: Int): Long {
-  require(n >= 0) { "n must be >= 0" }
-  require(k >= 0) { "k must be >= 0" }
-  require(k <= n) { "k must be <= n" }
-
-  // symmetry: C(n, k) == C(n, n-k)
-  val kk = minOf(k, n - k)
+fun numberOfPermutations(n: Int, k: Int): Long {
+  // require(n >= 0 && k >= 0 && k <= n) { "Require 0 ≤ k ≤ n" }
 
   var result = 1L
-  for (i in 1..kk) {
-    val hm = (result * (n - kk + i) / i)
+  for (i in 0 until k) {
+    val hm = result * (n - i)
     if (hm < 0) {
-      return result
+      return Long.MAX_VALUE
     }
     result = hm
   }
-
   return result
 }
 
@@ -463,70 +491,122 @@ class RandomTileSequenceGenerator(
   private val tilesToDrawFrom: List<TileType>,
   private val length: Int,
 ) {
-  val existingSequences get() = _existingSequences.toSet()
+  // val existingSequences get() = _existingSequences.toSet()
 
-  private val takenPrefixes: MutableMap<Int, MutableMap<List<TileType>, MutableSet<TileType>>> = mutableMapOf()
-  private val _existingSequences = mutableSetOf<List<TileType>>()
+  private val takenPrefixes: MutableMap<Int, MutableMap<List<TileType>, MutableList<TileType>>> = mutableMapOf()
+  // private val _existingSequences = mutableSetOf<List<TileType>>()
 
-  fun generateRandomSequence() : List<TileType> {
+  init {
+    repeat(length) {
+      takenPrefixes[it] = mutableMapOf()
+    }
+    takenPrefixes[0]!![emptyList()] = tilesToDrawFrom.toMutableList()
+    takenPrefixes[length] = mutableMapOf()
+  }
+
+  fun generateRandomSequence(): List<TileType> {
     val remainingTiles = tilesToDrawFrom.toMutableList()
-    val output = mutableListOf<TileType>()
+    val currentPrefix = mutableListOf<TileType>()
 
-    while (output.size < length) {
-      val prefixCheck = takenPrefixes[output.size]?.get(output.toList())
-      // prefix not found, return randomSeqeunce after booking everything into prefixes
-      if (prefixCheck == null) {
-        // build randomsequence and check everything in
-        val actualOutput = output + remainingTiles.shuffled().subList(0, length - output.size)
-        for (i in 1..actualOutput.size) {
-          val set = takenPrefixes.getOrPut(i) { mutableMapOf() }.get(actualOutput.subList(0,i))
+    while (currentPrefix.size < length) {
+      val pickableTiles = takenPrefixes[currentPrefix.size]!![currentPrefix.toList()]
+      // prefix not found, return randomSequence after booking everything into prefixes
+      if (pickableTiles == null) {
+        // build randomSequence and check everything in
+        val output = currentPrefix + remainingTiles.shuffled().subList(0, length - currentPrefix.size)
+        for (i in 1..output.size) {
+          val set = takenPrefixes[i]!![output.subList(0, i)]
           if (set == null) {
             val actualRemainingTiles = tilesToDrawFrom.toMutableList()
-            actualOutput.subList(i, actualOutput.size).forEach { actualRemainingTiles.remove(it) }
-            val startingSet = mutableSetOf<TileType>()
-            actualRemainingTiles.forEach { startingSet.add(it) }
-            takenPrefixes.getOrPut(i) { mutableMapOf() }[actualOutput.subList(0,i)] = startingSet
+            output.subList(i, output.size).forEach { actualRemainingTiles.remove(it) }
+            val startingList = mutableListOf<TileType>()
+            actualRemainingTiles.forEach { startingList.add(it) }
+            takenPrefixes[i]!![output.subList(0, i)] = startingList
           } else {
-            if (i < actualOutput.size) { // no other checks necessary, since we should be at the end, and thus its 0
-              set.remove(actualOutput[i])
+            if (i < output.size) { // no other checks necessary, since we should be at the end, and thus its 0
+              set.remove(output[i])
             }
           }
 
         }
-        _existingSequences.add(actualOutput)
-        return actualOutput
+        // _existingSequences.add(output)
+        return output
       }
-      if (prefixCheck.isEmpty()) {
-        println("prefixcheck is Empty?")
-        return listOf()// I guess we have everything?
-      }
+
       // prefix found, lets choose our next tile
-      val nextTile = prefixCheck.random()
-      output.add(nextTile)
+      val nextTile = if (pickableTiles.isNotEmpty()) {
+        pickableTiles.random()
+      } else {
+        remainingTiles.random()
+      }
+      currentPrefix.add(nextTile)
       remainingTiles.remove(nextTile)
     }
-    return output
+    return currentPrefix
   }
 }
 
-fun generateRandomSequence(existingSequences: Set<List<TileType>>, tilesToDrawFrom: List<TileType>, length: Int): List<TileType> {
-  val remainingTiles = tilesToDrawFrom.toMutableList();
-  val output = mutableListOf<TileType>()
+fun fastEvaluateStdHand(
+  meldsIncludingEye: List<List<TileType>>,
+  prevWind: Turn,
+  playerWind: Turn,
+): Int {
+  val eye = meldsIncludingEye.find { it.size == 2 }
+    ?: throw UnsupportedOperationException("How do we have an average hand from determineAverageWin with no eye")
+  val remainingMelds = meldsIncludingEye.filter { it.size > 2 }
 
-  while (output.size < length) {
+  var faan = 0;
+  var noDragonBonus = false; // no dragon pong points for small/great dragon
 
-    if (existingSequences.any{ it.subList(0, output.size) != output.toList() }) {
-      return output + remainingTiles.shuffled().subList(0, length - output.size)
-    }
-    if (output.size == length) {
-      println("output.size == length, also output : ${formatTiles(output, 1000, "")}")
-      return listOf()
-    }
-    // val tilesToChooseFrom = remainingTiles.filterNot { rt -> existingSequences.map { it[output.size] }.contains(rt) }
-    // val randomTile = if (tilesToChooseFrom.isEmpty()) remainingTiles.random() else tilesToChooseFrom.random()
-    val randomTile = remainingTiles.random()
-    output.add(randomTile)
-    remainingTiles.remove(randomTile)
+  if (meldsIncludingEye.all { isSameSuit(it, null) }) { // all honours
+    faan += 7
+  } else if (isDragonEyePongKong(eye) && remainingMelds.count { isDragonEyePongKong(it) } == 2) { // small dragon
+    faan += 5
+    noDragonBonus = true;
+  } else if (remainingMelds.count { isDragonEyePongKong(it) } == 3) { // great dragon
+    faan += 8
+    noDragonBonus = true;
+  } else if (isWindEyePongKong(eye) && remainingMelds.count { isWindEyePongKong(it) } == 3) {// small wind
+    faan += 5
+  } else if (remainingMelds.count { isWindEyePongKong(it) } == 4) { // great wind
+    faan += 10 // includes all pongs later
+  } else if (meldsIncludingEye.all { isTerminalEyePongKong(it) }) { // all Terminals
+    faan += 7
   }
-  return output
+
+  // check for all chows
+  if (remainingMelds.all { isChow(it) }) {
+    faan += 1;
+  }
+  // all pongs
+  if (remainingMelds.all { isPongOrKong(it) }) {
+    faan += 3
+  }
+  // Same Suit (without honour)
+  val firstActualSuit = meldsIncludingEye.firstOrNull { it.isNotEmpty() && null != it[0].suit }?.get(0)?.suit
+  if (null != firstActualSuit && meldsIncludingEye.all { isSameSuit(it, firstActualSuit) }) {
+    faan += 7
+  }
+  // Mixed one suit
+  if (null != firstActualSuit && meldsIncludingEye.all { isSameSuit(it, firstActualSuit) || isSameSuit(it, null) }) {
+    faan += 3
+  }
+
+  // Dragon Bonus
+  if (!noDragonBonus) {
+    val dragons = remainingMelds.count { isDragonEyePongKong(it) }
+    if (dragons > 0) {
+      faan += dragons
+    }
+  }
+
+  // Wind Bonus
+  if (remainingMelds.any { isWindEyePongKong(it) && it[0] == cardinalDirectionToWindTile(prevWind) }) {
+    faan += 1
+  }
+  if (remainingMelds.any { isWindEyePongKong(it) && it[0] == cardinalDirectionToWindTile(playerWind) }) {
+    faan += 1
+  }
+
+  return faan
 }

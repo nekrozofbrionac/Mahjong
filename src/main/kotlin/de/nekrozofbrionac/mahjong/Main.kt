@@ -21,7 +21,7 @@ fun main() {
       BotPlayer(PongSpeedRunBot(verbose = verbose)),
       BotPlayer(PongSpeedRunBot(verbose = verbose)),
       //BotPlayer(PongSpeedRunBot(verbose = verbose)),
-      BotPlayer(NoIdeaAboutHandsBot(iterations = 100)),
+      BotPlayer(NoIdeaAboutHandsBot(iterations = 1000)),
       //BotPlayer(NoIdeaAboutHandsBot(iterations = 100)),
       { p, t ->
         winners.add(t)
