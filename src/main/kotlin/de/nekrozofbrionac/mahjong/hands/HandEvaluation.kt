@@ -148,7 +148,7 @@ fun evaluateStandardHand(
     winDescription += " All Seasons"
   }
 
-  return Triple(min(faan, maxFaan), winDescription, meldsIncludingEye);
+  return Triple(min(faan, maxFaan), winDescription.trim(), meldsIncludingEye);
 }
 
 
@@ -310,11 +310,15 @@ fun isThirteenOrphans(hand: List<TileType>): Boolean {
 }
 
 fun isNinePorts(hand: List<TileType>): Boolean {
-  val ninePortsNumerals = listOf(
-    1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9
-  )
   return hand[0].suit != null &&
       hand.all { isSameSuit(hand, hand[0].suit) } &&
-      hand.map { it.numeral }.containsAll(ninePortsNumerals) &&
-      hand.all { it.numeral != null }; // probably cheaper and anyways, equivalent to the vice versa like
+      (hand.count { it.numeral == 1 } >= 3) &&
+      (hand.count { it.numeral == 2 } >= 1) &&
+      (hand.count { it.numeral == 3 } >= 1) &&
+      (hand.count { it.numeral == 4 } >= 1) &&
+      (hand.count { it.numeral == 5 } >= 1) &&
+      (hand.count { it.numeral == 6 } >= 1) &&
+      (hand.count { it.numeral == 7 } >= 1) &&
+      (hand.count { it.numeral == 8 } >= 1) &&
+      (hand.count { it.numeral == 9 } >= 3)
 }

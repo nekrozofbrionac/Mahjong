@@ -4,6 +4,7 @@ import Player
 import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.Board
 import de.nekrozofbrionac.mahjong.board.TileType
+import de.nekrozofbrionac.mahjong.player.control.bot.mahjongSet
 
 fun draw(board: Board, player: Player): Boolean {
   val drawnTile = board.drawFromWall()
@@ -18,18 +19,19 @@ fun draw(board: Board, player: Player): Boolean {
 
 fun printPov(pov: PlayerPov) {
   println()
-  println("------------ PLAYER POV ${pov.playerSeat.name} ------------")
+  println("------------ PLAYER POV ${pov.name} ------------")
   println()
   println("Current Turn: ${pov.turn}")
   println("Current Turn Player: ${pov.currentTurnPlayer}")
+  println("Current Prevailing Wind: ${pov.prevailingWind}")
   println("You : ${pov.playerSeat.name}")
-  println("Previous player: ${pov.prevSeat.name}")
+  println("Previous player: ${pov.prevSeat.name} (${pov.prevName})")
   println("    Melds:   ${pov.prevMelds.joinToString("  ") { formatTiles(it, 16, "") }}")
   println("    Flowers: ${formatTiles(pov.prevFlowers, 8, "")}")
-  println("Next player: ${pov.nextSeat.name}")
+  println("Next player: ${pov.nextSeat.name} (${pov.nextName})")
   println("    Melds:   ${pov.nextMelds.joinToString("  ") { formatTiles(it, 16, "") }}")
   println("    Flowers: ${formatTiles(pov.nextFlowers, 8, "")}")
-  println("Opposite player: ${pov.oppoSeat.name}")
+  println("Opposite player: ${pov.oppoSeat.name} (${pov.oppoName})")
   println("    Melds:   ${pov.oppoMelds.joinToString("  ") { formatTiles(it, 16, "") }}")
   println("    Flowers: ${formatTiles(pov.oppoFlowers, 8, "")}")
   println("Board:")
@@ -41,7 +43,7 @@ fun printPov(pov: PlayerPov) {
   println("    Melds:   ${pov.melds.joinToString("  ") { formatTiles(it, 16, "") }}")
   println("    Flowers: ${formatTiles(pov.flowers, 8, "")}")
   println()
-  println("---------- PLAYER POV ${pov.playerSeat.name} END ----------")
+  println("---------- PLAYER POV ${pov.name} END ----------")
   println()
 }
 
@@ -82,3 +84,30 @@ fun formatTiles(tiles: List<TileType>, perLine: Int, padLeft: String = "        
     .joinToString("\n") { padLeft.plus(it.joinToString(" ")) }
 }
 
+fun <T> List<T>.combinations(k: Int): List<List<T>> {
+  if (k == 0) return listOf(emptyList())
+  if (k == 1) return this.map { listOf(it) }
+
+  var result = mutableListOf<List<T>>()
+
+  for (i in 0..(this.size - k)) {
+    val head = this[i]
+    val tailCombinations = subList(i + 1, this.size).combinations(k - 1)
+    for (tail in tailCombinations) {
+      result += listOf(head) + tail
+    }
+  }
+  return result
+}
+
+
+fun determineHiddenTiles(pov: PlayerPov): List<TileType> {
+  val allTiles = mahjongSet.toMutableList()
+  pov.discarded.forEach { allTiles.remove(it) }
+  pov.hand.forEach { allTiles.remove(it) }
+  pov.melds.flatten().forEach { allTiles.remove(it) }
+  pov.nextMelds.flatten().forEach { allTiles.remove(it) }
+  pov.prevMelds.flatten().forEach { allTiles.remove(it) }
+  pov.oppoMelds.flatten().forEach { allTiles.remove(it) }
+  return allTiles
+}

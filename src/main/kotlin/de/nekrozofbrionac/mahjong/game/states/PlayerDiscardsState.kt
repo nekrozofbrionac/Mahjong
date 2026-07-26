@@ -28,7 +28,7 @@ class PlayerDiscardsState : GameState {
         discardedTile
       )
 
-      if (eval.first >= 0) {
+      if (eval.first >= game.minFaan) {
         if (susWinner.playerControl.win(game.compilePlayerPov(winIndex))) {
           susWinner.addToHand(game.board.popLastDiscard());
           game.turnPlayer = winIndex;

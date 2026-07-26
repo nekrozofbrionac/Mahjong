@@ -1,9 +1,10 @@
 package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.mahjong.hands.determineAverageWin
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.draw
+import de.nekrozofbrionac.mahjong.game.Turn
+import de.nekrozofbrionac.mahjong.hands.evaluateHand
 
 class PlayerDrawsState : GameState {
 
@@ -17,7 +18,15 @@ class PlayerDrawsState : GameState {
       return;
     }
 
-    if (determineAverageWin(player.hand, player.melds) != null) {
+    val eval = evaluateHand(
+      Turn.getByIndex(game.wind),
+      Turn.getByIndex(game.turnPlayer),
+      player.hand,
+      player.melds,
+      player.flowers,
+      null
+    )
+    if (eval.first >= game.minFaan) {
       if (player.playerControl.win(game.compilePlayerPov(game.turnPlayer))) {
         game.gameState = WinState();
         game.handleStateChange();
@@ -25,6 +34,7 @@ class PlayerDrawsState : GameState {
       }
     }
 
+    // TODO: add kong draw to existing meld
     val lastDrawnTile = player.hand.last() // exists because of checking earlier
     if (player.isKongAvailableFromDraw(lastDrawnTile)) {
       if (player.playerControl.kongFromDraw(game.compilePlayerPov(game.turnPlayer))) {

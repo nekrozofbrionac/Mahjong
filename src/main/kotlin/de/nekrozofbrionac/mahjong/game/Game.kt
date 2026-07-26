@@ -4,7 +4,6 @@ import GameState
 import Player
 import de.nekrozofbrionac.mahjong.board.SimpleBoard
 import de.nekrozofbrionac.mahjong.formatTiles
-import de.nekrozofbrionac.mahjong.game.states.DrawnState
 import de.nekrozofbrionac.mahjong.game.states.InitialState
 import de.nekrozofbrionac.mahjong.board.Board
 import de.nekrozofbrionac.mahjong.board.TileType
@@ -19,16 +18,41 @@ enum class Turn {
 
   companion object {
     fun getByIndex(index: Int): Turn {
-      return Turn.entries[(index + 4) % 4]
+      return entries[(index + 4) % 4]
     }
   }
 }
 
+data class PlayerInfo(
+  val name: String,
+  val fullHand: List<TileType>,
+  val flowers: List<TileType>,
+)
+
+data class GameReport(
+  val minFaan: Int,
+  val prevailingWind: Turn,
+
+  val winnerSeat: Turn?,
+  val winnerScore: Int?,
+  val winnerScoreDesc: String?,
+
+  val players: Map<Turn, PlayerInfo>
+)
+
 data class PlayerPov(
   val turn: Int,
   val currentTurnPlayer: Turn,
+  val currentTurnPlayerName: String,
+  val minFaan: Int,
+
   val playerSeat: Turn,
   val prevailingWind: Turn,
+  val name: String,
+
+  val prevName: String,
+  val nextName: String,
+  val oppoName: String,
 
   val prevSeat: Turn,
   val nextSeat: Turn,
@@ -55,16 +79,20 @@ class Game(
   val playerSouth: Player,
   val playerWest: Player,
   val playerNorth: Player,
-  val onTermination: (Player?, Turn?) -> Unit = { _, _ -> Unit },
+  val onTermination: (gameReport: GameReport) -> Unit = { _ -> },
   val verbose: Boolean = false,
+  val wind: Int = 0,
+  val minFaan: Int = 3,
 ) {
   val board: Board = SimpleBoard();
-  val wind: Int = 0;
   var turn: Int = 0;
   var turnPlayer: Int = 0
     set(value) {
       field = value % 4
     };
+
+  var winner: Player? = null
+  var winnerEval: Triple<Int, String, List<List<TileType>>>? = null
 
   var gameState: GameState = InitialState();
 
@@ -99,8 +127,17 @@ class Game(
     }
   }
 
-  fun getDiscardedTile(): TileType {
-    return board.discarded.last()
+  fun getPlayerInfos(): Map<Turn, PlayerInfo> {
+    val output: MutableMap<Turn, PlayerInfo> = mutableMapOf()
+    repeat(4) {
+      val player =  getPlayerByIndex(it)
+      output[Turn.getByIndex(it)] = PlayerInfo(
+        name = player.name,
+        fullHand = player.melds.flatten() + player.hand,
+        flowers = player.flowers
+      )
+    }
+    return output;
   }
 
   fun compilePlayerPov(index: Int): PlayerPov {
@@ -112,6 +149,8 @@ class Game(
     return PlayerPov(
       turn = turn,
       currentTurnPlayer = Turn.getByIndex(turnPlayer),
+      currentTurnPlayerName = getCurrentPlayer().name,
+      minFaan = minFaan,
       playerSeat = Turn.getByIndex(index),
       prevailingWind = Turn.getByIndex(wind),
       prevSeat = Turn.getByIndex(index - 1),
@@ -128,6 +167,10 @@ class Game(
       hand = pov.hand,
       melds = pov.melds,
       flowers = pov.flowers,
+      name = pov.name,
+      prevName = prev.name,
+      nextName = next.name,
+      oppoName = oppo.name,
     )
   }
 
@@ -138,15 +181,11 @@ class Game(
     this.gameState.onStateEntry(this);
   }
 
-
-  fun terminate() {
-    if (verbose) {
-      println("This game is over.");
-    }
-    if (gameState.javaClass == DrawnState().javaClass) {
-      onTermination(null, null)
+  fun terminate(gameReport: GameReport) {
+    if (winnerEval == null || winner == null) {
+      onTermination(gameReport)
     } else {
-      onTermination(getCurrentPlayer(), Turn.getByIndex(turnPlayer))
+      onTermination(gameReport)
     }
   }
 

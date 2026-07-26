@@ -6,7 +6,9 @@ import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.player.control.PlayerControl
 import de.nekrozofbrionac.mahjong.printPov
 
-class TerminalPlayer : AbstractPlayer() {
+class TerminalPlayer(
+  override val name: String
+) : AbstractPlayer() {
   override val playerControl: PlayerControl = object : PlayerControl {
     override fun win(pov: PlayerPov): Boolean {
       printPov(pov)
@@ -101,7 +103,15 @@ class TerminalPlayer : AbstractPlayer() {
       val chowPossibilities = determineChowPossibilities(pov.hand, lastDiscard)
 
       if (chowPossibilities.size == 1) {
-        val chowToTake = interact("Chow with ${pov.discarded.last().name.lowercase()} to form ${formatTiles(chowPossibilities[0], 3, "")}? (Y/n)") { l ->
+        val chowToTake = interact(
+          "Chow with ${pov.discarded.last().name.lowercase()} to form ${
+            formatTiles(
+              chowPossibilities[0],
+              3,
+              ""
+            )
+          }? (Y/n)"
+        ) { l ->
           when (l.trim().lowercase()) {
             "y" -> chowPossibilities[0]
             "yes" -> chowPossibilities[0]

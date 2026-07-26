@@ -1,10 +1,11 @@
 package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.Game
+import de.nekrozofbrionac.mahjong.game.GameReport
 import de.nekrozofbrionac.mahjong.game.Turn
 import de.nekrozofbrionac.mahjong.hands.evaluateHand
+
 
 class WinState : GameState {
   override fun onStateEntry(game: Game) {
@@ -18,40 +19,19 @@ class WinState : GameState {
       winner.flowers,
       null
     )
-    val winningMelds = eval.third
 
-    if (!game.verbose) {
-      println("\nWinner: ${Turn.getByIndex(game.turnPlayer)}")
-      println("Winning Hand: ${eval.first} faan ${eval.second}\n              ${winningMelds.joinToString(" ") { formatTiles(it, 16, "") }}")
-      game.terminate();
-      return;
-    }
+    game.winner = game.getCurrentPlayer()
+    game.winnerEval = eval
 
-    val prevPlayer = game.getPlayerByIndex(game.turnPlayer - 1)
-    val prevSeat = Turn.getByIndex(game.turnPlayer - 1)
-    val nextPlayer = game.getPlayerByIndex(game.turnPlayer + 1)
-    val nextSeat = Turn.getByIndex(game.turnPlayer + 1)
-    val oppoPlayer = game.getPlayerByIndex(game.turnPlayer + 2)
-    val oppoSeat = Turn.getByIndex(game.turnPlayer + 2)
-
-    println()
-    println("-------------- WINNER: ${Turn.getByIndex(game.turnPlayer)}-------------")
-    println()
-    println("Winning Hand: ${eval.first} faan ${eval.second}")
-    println("    ${winningMelds.joinToString(" ") { formatTiles(it, 16, "") }}")
-    println()
-    println("Previous player: ${prevSeat}")
-    println("    Hand:   ${prevPlayer.melds.joinToString(" ") { formatTiles(it, 16, "") }}  ${formatTiles(prevPlayer.hand, 14, "")}")
-    println("    Flowers: ${formatTiles(prevPlayer.flowers, 8, "")}")
-    println("Next player: ${nextSeat}")
-    println("    Hand:   ${nextPlayer.melds.joinToString(" ") { formatTiles(it, 16, "") }}  ${formatTiles(nextPlayer.hand, 14, "")}")
-    println("    Flowers: ${formatTiles(nextPlayer.flowers, 8, "")}")
-    println("Oppo player: ${oppoSeat}")
-    println("    Hand:   ${oppoPlayer.melds.joinToString(" ") { formatTiles(it, 16, "") }}  ${formatTiles(oppoPlayer.hand, 14, "")}")
-    println("    Flowers: ${formatTiles(oppoPlayer.flowers, 8, "")}")
-    println()
-    println("---------------- GAME OVER --------------")
-
-    game.terminate();
+    game.terminate(
+      GameReport(
+        minFaan = game.minFaan,
+        prevailingWind = Turn.getByIndex(game.wind),
+        winnerSeat = Turn.getByIndex(game.turnPlayer),
+        winnerScore = eval.first,
+        winnerScoreDesc = eval.second,
+        players = game.getPlayerInfos(),
+      )
+    )
   }
 }

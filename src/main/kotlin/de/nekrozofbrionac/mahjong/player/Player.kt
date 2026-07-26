@@ -2,6 +2,7 @@ import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.player.control.PlayerControl
 
 interface Player {
+  val name: String
   val playerControl: PlayerControl
 
   val hand: List<TileType>;
