@@ -1,0 +1,257 @@
+package de.nekrozofbrionac.mahjong.player.control.bot.ml
+
+import de.nekrozofbrionac.mahjong.board.TileType
+import de.nekrozofbrionac.mahjong.game.PlayerPov
+import de.nekrozofbrionac.mahjong.game.Turn
+import kotlin.math.max
+
+class Neuron {
+  var a: FloatArray
+  var b: Float
+
+  constructor(previousLayerSize: Int, bias: Float) {
+    a = FloatArray(previousLayerSize)
+    b = bias
+  }
+
+  fun activation(previousLayerValues: FloatArray): Float {
+    val values = b + previousLayerValues.reduceIndexed { index, acc, fl -> acc + a[index] * fl }
+    return max(0.0f, values)
+  }
+
+  fun initializeWeights() {
+    a = FloatArray(a.size) { (Math.random() * 2 - 1).toFloat() }
+    b = (Math.random() * 2 - 1).toFloat()
+  }
+}
+
+class Brain {
+  val layers: List<List<Neuron>>
+
+  constructor(layerSizes: List<Int>) {
+    layers = layerSizes.mapIndexed { index, size ->
+      val previousLayerSize = if (index == 0) outputSize else layerSizes[index - 1]
+      List(size) { Neuron(previousLayerSize, bias = 0.0f).also { it.initializeWeights() } }
+    }.toMutableList().also {
+      it.add(List(22) { Neuron(layerSizes.last(), bias = 0.0f).also { it.initializeWeights() } })
+    }
+  }
+
+  fun think(pov: PlayerPov): Thought {
+    val inputLayer = povToInputLayer(pov)
+    var currentLayerValues = inputLayer
+
+    for (layer in layers) {
+      val nextLayerValues = FloatArray(layer.size)
+      for (i in layer.indices) {
+        nextLayerValues[i] = layer[i].activation(currentLayerValues)
+      }
+      currentLayerValues = nextLayerValues
+    }
+    return Thought(
+      winning = currentLayerValues[0],
+      discard01 = currentLayerValues[1],
+      discard02 = currentLayerValues[2],
+      discard03 = currentLayerValues[3],
+      discard04 = currentLayerValues[4],
+      discard05 = currentLayerValues[5],
+      discard06 = currentLayerValues[6],
+      discard07 = currentLayerValues[7],
+      discard08 = currentLayerValues[8],
+      discard09 = currentLayerValues[9],
+      discard10 = currentLayerValues[10],
+      discard11 = currentLayerValues[11],
+      discard12 = currentLayerValues[12],
+      discard13 = currentLayerValues[13],
+      discard14 = currentLayerValues[14],
+      kongFromDraw = currentLayerValues[15],
+      kongFromDiscard = currentLayerValues[16],
+      pongFromDiscard = currentLayerValues[17],
+      chowFromDiscardLowest = currentLayerValues[18],
+      chowFromDiscardMiddle = currentLayerValues[19],
+      chowFromDiscardHighest = currentLayerValues[20],
+      chowAtAll = currentLayerValues[21]
+    )
+  }
+}
+
+/*
+  | Value             | Encoding       |
+  |-------------------|----------------|
+  | minFaan           | Int            |
+  | prevailingWind    | Turn (HOE)     |
+  | playerSeat        | Turn (HOE)     |
+  | prevSeat          | Turn (HOE)     |
+  | nextSeat          | Turn (HOE)     |
+  | oppoSeat          | Turn (HOE)     |
+  | turn              | Int            |
+  | wallReminaing     | Int            |
+  | currentTurnPlayer | Turn (Int 0-3) |
+  | prevMelds         | TileType[4][4] |
+  | nextMelds         | TileType[4][4] |
+  | oppoMelds         | TileType[4][4] |
+  | prevFlowers       | TileType[8]    |
+  | nextFlowers       | TileType[8]    |
+  | oppoFlowers       | TileType[8]    |
+  | discarded         | TileType[84]   |
+  | hand              | TileType[14]   |
+  | melds             | TileType[4][4] |
+  | flowers           | TileType[8]    |
+
+  turns are hotoneencoded
+
+  1  + 5*4 + 1 + 1 + 4 + 34*16*3 + 34*8*3 + 34*84 + 34*14 + 34*16 + 34*8
+  6623
+ */
+const val tileEncodingSize = 34
+const val prevMeldFirstIndex = 1 + 5 * 4 + 2 + 4
+const val sizePerMeld = 4 * 4 * tileEncodingSize
+const val nextMeldFirstIndex = prevMeldFirstIndex + 4 * sizePerMeld
+const val oppoMeldFirstIndex = nextMeldFirstIndex + 4 * sizePerMeld
+const val prevFlowerIndex = oppoMeldFirstIndex + 4 * sizePerMeld
+const val nextFlowerIndex = prevFlowerIndex + 8 * tileEncodingSize
+const val oppoFlowerIndex = nextFlowerIndex + 8 * tileEncodingSize
+const val discardedIndex = oppoFlowerIndex + 8 * tileEncodingSize
+const val handIndex = discardedIndex + 84 * tileEncodingSize
+const val meldsIndex = handIndex + 14 * tileEncodingSize
+const val flowersIndex = meldsIndex + 4 * sizePerMeld
+const val outputSize = flowersIndex + 8 * tileEncodingSize
+fun povToInputLayer(pov: PlayerPov): FloatArray {
+  /* val output = FloatArray(
+    1 + 5 * 4 + 1 + 1 + 4
+        + tileEncodingSize * 4 * 4 * 3
+        + tileEncodingSize * 8 * 3
+        + tileEncodingSize * 84
+        + tileEncodingSize * 14
+        + tileEncodingSize * 4 * 4
+        + tileEncodingSize * 8
+  ) */
+  val output = FloatArray(outputSize)
+  output[0] = pov.minFaan.toFloat()
+  output[1 + 4 * 0 + pov.prevailingWind.ordinal] = 1.0f
+  output[1 + 4 * 1 + pov.playerSeat.ordinal] = 1.0f
+  output[1 + 4 * 2 + pov.prevSeat.ordinal] = 1.0f
+  output[1 + 4 * 3 + pov.nextSeat.ordinal] = 1.0f
+  output[1 + 4 * 4 + pov.oppoSeat.ordinal] = 1.0f
+  output[1 + 4 * 5 + 0] = pov.turn.toFloat()
+  output[1 + 4 * 5 + 1] = pov.wallRemaining.toFloat()
+  output[1 + 4 * 5 + 2 + pov.currentTurnPlayer.ordinal] = 1.0f
+  // first tile of prevmelds: 1 + 4*4 + 2 + 4
+  if (pov.prevMelds.size > 4) {
+    throw AssertionError("why does someone have more than 4 melds")
+  }
+  pov.prevMelds.forEachIndexed { m_i: Int, tiles: List<TileType> ->
+    tiles.forEachIndexed { t_i: Int, tile: TileType ->
+      tileTypeToWeights(tile).forEachIndexed { t_ii, fl ->
+        output[prevMeldFirstIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
+      }
+    }
+  }
+  pov.nextMelds.forEachIndexed { m_i, tiles ->
+    tiles.forEachIndexed { t_i, tile ->
+      tileTypeToWeights(tile).forEachIndexed { t_ii, fl ->
+        output[nextMeldFirstIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
+      }
+    }
+  }
+  pov.oppoMelds.forEachIndexed { m_i, tiles ->
+    tiles.forEachIndexed { t_i, tile ->
+      tileTypeToWeights(tile).forEachIndexed { t_ii, fl ->
+        output[oppoMeldFirstIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
+      }
+    }
+  }
+
+  pov.prevFlowers.forEachIndexed { fi, ft ->
+    tileTypeToWeights(ft).forEachIndexed { fii, fl ->
+      output[prevFlowerIndex + fi * tileEncodingSize + fii]
+    }
+  }
+  pov.nextFlowers.forEachIndexed { fi, ft ->
+    tileTypeToWeights(ft).forEachIndexed { fii, fl ->
+      output[nextFlowerIndex + fi * tileEncodingSize + fii]
+    }
+  }
+  pov.oppoFlowers.forEachIndexed { fi, ft ->
+    tileTypeToWeights(ft).forEachIndexed { fii, fl ->
+      output[oppoFlowerIndex + fi * tileEncodingSize + fii]
+    }
+  }
+  pov.discarded.forEachIndexed { di, tile ->
+    tileTypeToWeights(tile).forEachIndexed { dii, fl ->
+      output[discardedIndex + di * tileEncodingSize + dii]
+    }
+  }
+  pov.hand.forEachIndexed { hi, tile ->
+    tileTypeToWeights(tile).forEachIndexed { hii, fl ->
+      output[handIndex + hi * tileEncodingSize + hii]
+    }
+  }
+  pov.melds.forEachIndexed { m_i, tiles ->
+    tiles.forEachIndexed { t_i, tile ->
+      tileTypeToWeights(tile).forEachIndexed { t_ii, fl ->
+        output[meldsIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
+      }
+    }
+  }
+  pov.flowers.forEachIndexed { hi, tile ->
+    tileTypeToWeights(tile).forEachIndexed { hii, fl ->
+      output[flowersIndex + hi * tileEncodingSize + hii]
+    }
+  }
+  return output
+}
+
+
+data class Thought(
+  val winning: Float,
+  val discard01: Float,
+  val discard02: Float,
+  val discard03: Float,
+  val discard04: Float,
+  val discard05: Float,
+  val discard06: Float,
+  val discard07: Float,
+  val discard08: Float,
+  val discard09: Float,
+  val discard10: Float,
+  val discard11: Float,
+  val discard12: Float,
+  val discard13: Float,
+  val discard14: Float,
+  val kongFromDraw: Float,
+  val kongFromDiscard: Float,
+  val pongFromDiscard: Float,
+  val chowFromDiscardLowest: Float,
+  val chowFromDiscardMiddle: Float,
+  val chowFromDiscardHighest: Float,
+  val chowAtAll: Float,
+)
+
+val emptyPov = PlayerPov(
+  turn = 0,
+  currentTurnPlayer = Turn.EAST,
+  currentTurnPlayerName = "",
+  minFaan = 1,
+  playerSeat = Turn.EAST,
+  prevailingWind = Turn.EAST,
+  name = "",
+  prevName = "",
+  nextName = "",
+  oppoName = "",
+  prevSeat = Turn.EAST,
+  nextSeat = Turn.EAST,
+  oppoSeat = Turn.EAST,
+  prevMelds = emptyList(),
+  nextMelds = emptyList(),
+  oppoMelds = emptyList(),
+  prevFlowers = emptyList(),
+  nextFlowers = emptyList(),
+  oppoFlowers = emptyList(),
+  discarded = emptyList(),
+  wallRemaining = 0,
+  hand = emptyList(),
+  melds = emptyList(),
+  flowers = emptyList(),
+)
+

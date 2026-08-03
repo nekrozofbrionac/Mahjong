@@ -6,13 +6,18 @@ import de.nekrozofbrionac.mahjong.player.BotPlayer
 import de.nekrozofbrionac.mahjong.player.control.bot.LobotomizedBot
 import de.nekrozofbrionac.mahjong.player.control.bot.NoIdeaAboutHandsBot
 import de.nekrozofbrionac.mahjong.player.control.bot.PongSpeedRunBot
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.NeuralNetBot
 
 fun main() {
   println("Mahjong")
 
   val winners = mutableMapOf<String?, Int>()
-  val maxGames = 1000
+  val maxGames = 1
   val verbose = false
+
+  val brain = Brain(listOf(1000, 1000, 1000));
+
 
   for (i in 0..<maxGames) {
     val players = listOf(
@@ -20,7 +25,8 @@ fun main() {
       BotPlayer("Pong1", PongSpeedRunBot(verbose = verbose)),
       BotPlayer("Pong2", PongSpeedRunBot(verbose = verbose)),
       //BotPlayer("Pong3", PongSpeedRunBot(verbose = verbose)),
-      BotPlayer("NIAH", NoIdeaAboutHandsBot(iterations = 1000, verbose = verbose)),
+      BotPlayer("ML", NeuralNetBot(true, brain )),
+      //BotPlayer("NIAH", NoIdeaAboutHandsBot(iterations = 100, verbose = verbose)),
     )
     val game = Game(
       playerEast = players[i % 4],
@@ -37,7 +43,7 @@ fun main() {
         println()
         val longestName = winners.maxOf { it.key.toString().length }
         val longestScore = i.toString().length
-        winners.toList().sortedByDescending{ it.second }.forEach {
+        winners.toList().sortedByDescending { it.second }.forEach {
           println(it.first.toString().padStart(longestName) + ": " + it.second.toString().padStart(longestScore))
         }
         println("Total".padStart(longestName) + ": " + i.toString().padStart(longestScore))
