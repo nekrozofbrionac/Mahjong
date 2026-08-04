@@ -2,31 +2,42 @@ package de.nekrozofbrionac.mahjong
 
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.game.GameReport
+import de.nekrozofbrionac.mahjong.game.Turn
 import de.nekrozofbrionac.mahjong.player.BotPlayer
+import de.nekrozofbrionac.mahjong.player.control.RecordingPlayerControl
 import de.nekrozofbrionac.mahjong.player.control.bot.LobotomizedBot
 import de.nekrozofbrionac.mahjong.player.control.bot.NoIdeaAboutHandsBot
 import de.nekrozofbrionac.mahjong.player.control.bot.PongSpeedRunBot
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.NeuralNetBot
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.saveRecording
+import kotlin.random.Random
 
 fun main() {
   println("Mahjong")
 
   val winners = mutableMapOf<String?, Int>()
-  val maxGames = 1
+  val maxGames = 1000
   val verbose = false
 
-  val brain = Brain(listOf(1000, 1000, 1000));
+  // val brain = Brain(listOf(1000, 1000, 1000));
 
+  //val recordingPlayerControl1 = RecordingPlayerControl(LobotomizedBot(verbose = verbose))
+  //val recordingPlayerControl2 = RecordingPlayerControl(PongSpeedRunBot(verbose = verbose))
+  //val recordingPlayerControl3 = RecordingPlayerControl(PongSpeedRunBot(verbose = verbose))
+  val recordingPlayerControl1 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
+  val recordingPlayerControl2 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
+  val recordingPlayerControl3 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
+  val recordingPlayerControl4 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
 
   for (i in 0..<maxGames) {
     val players = listOf(
-      BotPlayer("Lobo01", LobotomizedBot(verbose = verbose)),
-      BotPlayer("Pong1", PongSpeedRunBot(verbose = verbose)),
-      BotPlayer("Pong2", PongSpeedRunBot(verbose = verbose)),
+      BotPlayer("niah1",recordingPlayerControl1),
+      BotPlayer("niah2",recordingPlayerControl2),
+      BotPlayer("niah3", recordingPlayerControl3),
       //BotPlayer("Pong3", PongSpeedRunBot(verbose = verbose)),
-      BotPlayer("ML", NeuralNetBot(true, brain )),
-      //BotPlayer("NIAH", NoIdeaAboutHandsBot(iterations = 100, verbose = verbose)),
+      BotPlayer("NIAH4", recordingPlayerControl4),
+      //BotPlayer("ML", NeuralNetBot(verbose = verbose, brain)),
     )
     val game = Game(
       playerEast = players[i % 4],
@@ -38,6 +49,7 @@ fun main() {
         val winnerName = it.winnerSeat?.let { seat -> it.players[seat]?.name } ?: "Draw"
         winners[winnerName] = winners.getOrDefault(winnerName, 0) + 1
 
+
         println("")
         println("*** Current Status ***")
         println()
@@ -47,9 +59,18 @@ fun main() {
           println(it.first.toString().padStart(longestName) + ": " + it.second.toString().padStart(longestScore))
         }
         println("Total".padStart(longestName) + ": " + i.toString().padStart(longestScore))
+
+        players.forEach {
+          if (it.playerControl.winRecorded) {
+            saveRecording(it.playerControl.recording())
+          }
+          it.playerControl.reset();
+        }
+
       },
       verbose = verbose,
       wind = ((i / 4) % 4),
+      minFaan = Random.nextInt(0, 9) // 0 to 8
     );
     game.start();
   }
@@ -66,12 +87,16 @@ fun main() {
 
 fun printGameReport(gr: GameReport) {
   if (gr.winnerSeat == null) {
+    print("\n-------------------------------------------------------------------------------------------")
+    print("\nGame Faan: ${gr.minFaan}")
     print("\nDrawn Game. ")
     print("\n")
     print("\n")
   } else {
     val formattedHand = formatTiles(gr.players[gr.winnerSeat]?.fullHand ?: listOf(), 18, "")
-    print("\nWinner:     ${gr.players[gr.winnerSeat]?.name} ${gr.winnerSeat}, ${gr.winnerScore} faan, ${gr.winnerScoreDesc}")
+    print("\n-------------------------------------------------------------------------------------------")
+    print("\nGame Faan: ${gr.minFaan}")
+    print("\n   Winner:     ${gr.players[gr.winnerSeat]?.name} ${gr.winnerSeat}, ${gr.winnerScore} faan, ${gr.winnerScoreDesc}")
     print("\n            $formattedHand")
     print("\n")
   }

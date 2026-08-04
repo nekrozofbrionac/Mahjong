@@ -48,30 +48,7 @@ class Brain {
       }
       currentLayerValues = nextLayerValues
     }
-    return Thought(
-      winning = currentLayerValues[0],
-      discard01 = currentLayerValues[1],
-      discard02 = currentLayerValues[2],
-      discard03 = currentLayerValues[3],
-      discard04 = currentLayerValues[4],
-      discard05 = currentLayerValues[5],
-      discard06 = currentLayerValues[6],
-      discard07 = currentLayerValues[7],
-      discard08 = currentLayerValues[8],
-      discard09 = currentLayerValues[9],
-      discard10 = currentLayerValues[10],
-      discard11 = currentLayerValues[11],
-      discard12 = currentLayerValues[12],
-      discard13 = currentLayerValues[13],
-      discard14 = currentLayerValues[14],
-      kongFromDraw = currentLayerValues[15],
-      kongFromDiscard = currentLayerValues[16],
-      pongFromDiscard = currentLayerValues[17],
-      chowFromDiscardLowest = currentLayerValues[18],
-      chowFromDiscardMiddle = currentLayerValues[19],
-      chowFromDiscardHighest = currentLayerValues[20],
-      chowAtAll = currentLayerValues[21]
-    )
+    return floatToThought(currentLayerValues)
   }
 }
 
@@ -100,12 +77,12 @@ class Brain {
 
   turns are hotoneencoded
 
-  1  + 5*4 + 1 + 1 + 4 + 34*16*3 + 34*8*3 + 34*84 + 34*14 + 34*16 + 34*8
+  1  + 5*4 + 1 + 1 + 4 + 34*4*4*3 + 34*8*3 + 34*84 + 34*14 + 34*4*4 + 34*8
   6623
  */
 const val tileEncodingSize = 34
+const val sizePerMeld = 4 * tileEncodingSize
 const val prevMeldFirstIndex = 1 + 5 * 4 + 2 + 4
-const val sizePerMeld = 4 * 4 * tileEncodingSize
 const val nextMeldFirstIndex = prevMeldFirstIndex + 4 * sizePerMeld
 const val oppoMeldFirstIndex = nextMeldFirstIndex + 4 * sizePerMeld
 const val prevFlowerIndex = oppoMeldFirstIndex + 4 * sizePerMeld
@@ -227,6 +204,60 @@ data class Thought(
   val chowFromDiscardHighest: Float,
   val chowAtAll: Float,
 )
+
+fun floatToThought(values: FloatArray): Thought {
+  return Thought(
+    winning = values[0],
+    discard01 = values[1],
+    discard02 = values[2],
+    discard03 = values[3],
+    discard04 = values[4],
+    discard05 = values[5],
+    discard06 = values[6],
+    discard07 = values[7],
+    discard08 = values[8],
+    discard09 = values[9],
+    discard10 = values[10],
+    discard11 = values[11],
+    discard12 = values[12],
+    discard13 = values[13],
+    discard14 = values[14],
+    kongFromDraw = values[15],
+    kongFromDiscard = values[16],
+    pongFromDiscard = values[17],
+    chowFromDiscardLowest = values[18],
+    chowFromDiscardMiddle = values[19],
+    chowFromDiscardHighest = values[20],
+    chowAtAll = values[21]
+  )
+}
+
+fun thoughtToFloat(thought: Thought): FloatArray {
+  return floatArrayOf(
+    thought.winning,
+    thought.discard01,
+    thought.discard02,
+    thought.discard03,
+    thought.discard04,
+    thought.discard05,
+    thought.discard06,
+    thought.discard07,
+    thought.discard08,
+    thought.discard09,
+    thought.discard10,
+    thought.discard11,
+    thought.discard12,
+    thought.discard13,
+    thought.discard14,
+    thought.kongFromDraw,
+    thought.kongFromDiscard,
+    thought.pongFromDiscard,
+    thought.chowFromDiscardLowest,
+    thought.chowFromDiscardMiddle,
+    thought.chowFromDiscardHighest,
+    thought.chowAtAll
+  )
+}
 
 val emptyPov = PlayerPov(
   turn = 0,
