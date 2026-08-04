@@ -3,6 +3,7 @@ package de.nekrozofbrionac.mahjong.player.control.bot.ml
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.player.control.PlayerControl
+import de.nekrozofbrionac.mahjong.player.control.PlayerControlAction
 import de.nekrozofbrionac.mahjong.printPov
 
 class NeuralNetBot(
@@ -12,7 +13,7 @@ class NeuralNetBot(
 
 
   override fun win(pov: PlayerPov): Boolean {
-    val thought = brain.think(pov)
+    val thought = brain.think(PlayerControlAction.WIN, pov)
     if (verbose) {
       printPov(pov)
       println("NeuralNetBot action: win")
@@ -22,7 +23,7 @@ class NeuralNetBot(
   }
 
   override fun chooseDiscard(pov: PlayerPov): TileType {
-    val thought = brain.think(pov)
+    val thought = brain.think(PlayerControlAction.CHOOSE_DISCARD, pov)
     if (verbose) {
       printPov(pov)
       println("NeuralNetBot action: chooseDiscard")
@@ -54,7 +55,7 @@ class NeuralNetBot(
   }
 
   override fun kongFromDraw(pov: PlayerPov): Boolean {
-    val thought = brain.think(pov)
+    val thought = brain.think(PlayerControlAction.KONG_FROM_DRAW, pov)
     if (verbose) {
       printPov(pov)
       println("NeuralNetBot action: kongFromDraw")
@@ -64,7 +65,7 @@ class NeuralNetBot(
   }
 
   override fun kongFromDiscard(pov: PlayerPov): Boolean {
-    val thought = brain.think(pov)
+    val thought = brain.think(PlayerControlAction.KONG_FROM_DISCARD, pov)
     if (verbose) {
       printPov(pov)
       println("NeuralNetBot action: kongFromDiscard")
@@ -74,7 +75,7 @@ class NeuralNetBot(
   }
 
   override fun pongFromDiscard(pov: PlayerPov): Boolean {
-    val thought = brain.think(pov)
+    val thought = brain.think(PlayerControlAction.PONG_FROM_DISCARD, pov)
     if (verbose) {
       printPov(pov)
       println("NeuralNetBot action: pongFromDiscard")
@@ -84,7 +85,7 @@ class NeuralNetBot(
   }
 
   override fun chowFromDiscard(pov: PlayerPov): TileType? {
-    val thought = brain.think(pov)
+    val thought = brain.think(PlayerControlAction.CHOW_FROM_DISCARD, pov)
     if (verbose) {
       printPov(pov)
       println("NeuralNetBot action: chowFromDiscard")

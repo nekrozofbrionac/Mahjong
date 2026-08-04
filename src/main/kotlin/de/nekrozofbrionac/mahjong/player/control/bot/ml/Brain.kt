@@ -3,6 +3,8 @@ package de.nekrozofbrionac.mahjong.player.control.bot.ml
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.game.Turn
+import de.nekrozofbrionac.mahjong.player.control.PlayerControlAction
+import java.io.*
 import kotlin.math.max
 
 class Neuron {
@@ -30,15 +32,51 @@ class Brain {
 
   constructor(layerSizes: List<Int>) {
     layers = layerSizes.mapIndexed { index, size ->
-      val previousLayerSize = if (index == 0) outputSize else layerSizes[index - 1]
+      val previousLayerSize = if (index == 0) inputLayerSize else layerSizes[index - 1]
       List(size) { Neuron(previousLayerSize, bias = 0.0f).also { it.initializeWeights() } }
     }.toMutableList().also {
       it.add(List(22) { Neuron(layerSizes.last(), bias = 0.0f).also { it.initializeWeights() } })
     }
   }
 
-  fun think(pov: PlayerPov): Thought {
-    val inputLayer = povToInputLayer(pov)
+  constructor(loadFromFile: String) {
+    DataInputStream(BufferedInputStream(FileInputStream(loadFromFile))).use { inputStream ->
+      try {
+        val amountOfLayers = inputStream.readInt()
+        val layerSizes = List(amountOfLayers) { inputStream.readInt() }
+        assert(layerSizes.last() == 22) { "The last layer size must be 22, but was ${layerSizes.last()}" }
+        layers = layerSizes.mapIndexed { index, size ->
+          val previousLayerSize = if (index == 0) inputLayerSize else layerSizes[index - 1]
+          List(size) {
+            val neuron = Neuron(previousLayerSize, bias = 0.0f)
+            neuron.a = FloatArray(previousLayerSize) { inputStream.readFloat() }
+            neuron.b = inputStream.readFloat()
+            neuron
+          }
+        }
+      } catch (_: EOFException) {
+        throw AssertionError("Unexpected end of file while loading brain from $loadFromFile")
+      }
+    }
+  }
+
+  fun save(saveToFile: String) {
+    DataOutputStream(BufferedOutputStream(FileOutputStream(saveToFile))).use { outputStream ->
+      outputStream.writeInt(layers.size)
+      layers.forEach { layer ->
+        outputStream.writeInt(layer.size)
+      }
+      layers.forEach {
+        it.forEach { neuron ->
+          neuron.a.forEach { weight -> outputStream.writeFloat(weight) }
+          outputStream.writeFloat(neuron.b)
+        }
+      }
+    }
+  }
+
+  fun think(action: PlayerControlAction, pov: PlayerPov): Thought {
+    val inputLayer = povToInputLayer(action, pov)
     var currentLayerValues = inputLayer
 
     for (layer in layers) {
@@ -50,11 +88,27 @@ class Brain {
     }
     return floatToThought(currentLayerValues)
   }
+
+  fun determineError(inputLayer: FloatArray, expectedOutput: FloatArray): FloatArray {
+    var currentLayerValues = inputLayer
+
+    for (layer in layers) {
+      val nextLayerValues = FloatArray(layer.size)
+      for (i in layer.indices) {
+        nextLayerValues[i] = layer[i].activation(currentLayerValues)
+      }
+      currentLayerValues = nextLayerValues
+    }
+    val outputLayer = currentLayerValues
+
+    return outputLayer.zip(expectedOutput) { actual, expected -> actual - expected }.toFloatArray()
+  }
 }
 
 /*
   | Value             | Encoding       |
   |-------------------|----------------|
+  | Action            | Action (HOE)   |
   | minFaan           | Int            |
   | prevailingWind    | Turn (HOE)     |
   | playerSeat        | Turn (HOE)     |
@@ -77,12 +131,12 @@ class Brain {
 
   turns are hotoneencoded
 
-  1  + 5*4 + 1 + 1 + 4 + 34*4*4*3 + 34*8*3 + 34*84 + 34*14 + 34*4*4 + 34*8
-  6623
+  6 + 1 + 5*4 + 1 + 1 + 4 + 34*4*4*3 + 34*8*3 + 34*84 + 34*14 + 34*4*4 + 34*8
+  6629
  */
 const val tileEncodingSize = 34
 const val sizePerMeld = 4 * tileEncodingSize
-const val prevMeldFirstIndex = 1 + 5 * 4 + 2 + 4
+const val prevMeldFirstIndex = 6 + 1 + 5 * 4 + 2 + 4
 const val nextMeldFirstIndex = prevMeldFirstIndex + 4 * sizePerMeld
 const val oppoMeldFirstIndex = nextMeldFirstIndex + 4 * sizePerMeld
 const val prevFlowerIndex = oppoMeldFirstIndex + 4 * sizePerMeld
@@ -92,8 +146,8 @@ const val discardedIndex = oppoFlowerIndex + 8 * tileEncodingSize
 const val handIndex = discardedIndex + 84 * tileEncodingSize
 const val meldsIndex = handIndex + 14 * tileEncodingSize
 const val flowersIndex = meldsIndex + 4 * sizePerMeld
-const val outputSize = flowersIndex + 8 * tileEncodingSize
-fun povToInputLayer(pov: PlayerPov): FloatArray {
+const val inputLayerSize = flowersIndex + 8 * tileEncodingSize
+fun povToInputLayer(action: PlayerControlAction, pov: PlayerPov): FloatArray {
   /* val output = FloatArray(
     1 + 5 * 4 + 1 + 1 + 4
         + tileEncodingSize * 4 * 4 * 3
@@ -103,16 +157,17 @@ fun povToInputLayer(pov: PlayerPov): FloatArray {
         + tileEncodingSize * 4 * 4
         + tileEncodingSize * 8
   ) */
-  val output = FloatArray(outputSize)
-  output[0] = pov.minFaan.toFloat()
-  output[1 + 4 * 0 + pov.prevailingWind.ordinal] = 1.0f
-  output[1 + 4 * 1 + pov.playerSeat.ordinal] = 1.0f
-  output[1 + 4 * 2 + pov.prevSeat.ordinal] = 1.0f
-  output[1 + 4 * 3 + pov.nextSeat.ordinal] = 1.0f
-  output[1 + 4 * 4 + pov.oppoSeat.ordinal] = 1.0f
-  output[1 + 4 * 5 + 0] = pov.turn.toFloat()
-  output[1 + 4 * 5 + 1] = pov.wallRemaining.toFloat()
-  output[1 + 4 * 5 + 2 + pov.currentTurnPlayer.ordinal] = 1.0f
+  val output = FloatArray(inputLayerSize)
+  output[0 + action.ordinal] = 1.0f
+  output[6] = pov.minFaan.toFloat()
+  output[6 + 1 + 4 * 0 + pov.prevailingWind.ordinal] = 1.0f
+  output[6 + 1 + 4 * 1 + pov.playerSeat.ordinal] = 1.0f
+  output[6 + 1 + 4 * 2 + pov.prevSeat.ordinal] = 1.0f
+  output[6 + 1 + 4 * 3 + pov.nextSeat.ordinal] = 1.0f
+  output[6 + 1 + 4 * 4 + pov.oppoSeat.ordinal] = 1.0f
+  output[6 + 1 + 4 * 5 + 0] = pov.turn.toFloat()
+  output[6 + 1 + 4 * 5 + 1] = pov.wallRemaining.toFloat()
+  output[6 + 1 + 4 * 5 + 2 + pov.currentTurnPlayer.ordinal] = 1.0f
   // first tile of prevmelds: 1 + 4*4 + 2 + 4
   if (pov.prevMelds.size > 4) {
     throw AssertionError("why does someone have more than 4 melds")

@@ -7,10 +7,10 @@ import de.nekrozofbrionac.mahjong.player.control.bot.ml.Thought
 class RecordingPlayerControl(
   val actualPlayerControl: PlayerControl
 ) : PlayerControl {
-  private val recordedActions: MutableList<Pair<PlayerPov, Thought>> = mutableListOf()
+  private val recordedActions: MutableList<Triple<PlayerControlAction, PlayerPov, Thought>> = mutableListOf()
   var winRecorded: Boolean = false
 
-  fun recording(): List<Pair<PlayerPov, Thought>> {
+  fun recording(): List<Triple<PlayerControlAction, PlayerPov, Thought>> {
     return recordedActions.toList()
   }
 
@@ -22,7 +22,7 @@ class RecordingPlayerControl(
   override fun win(pov: PlayerPov): Boolean {
     val result = actualPlayerControl.win(pov)
     winRecorded = result
-    recordedActions.add(Pair(pov, Thought(
+    recordedActions.add(Triple(PlayerControlAction.WIN, pov, Thought(
       winning = if (result) 1.0f else 0.0f,
       discard01 = 0.0f,
       discard02 = 0.0f,
@@ -51,7 +51,7 @@ class RecordingPlayerControl(
 
   override fun chooseDiscard(pov: PlayerPov): TileType {
     val result = actualPlayerControl.chooseDiscard(pov)
-    recordedActions.add(Pair(pov, Thought(
+    recordedActions.add(Triple(PlayerControlAction.CHOOSE_DISCARD, pov, Thought(
       winning = 0.0f,
       discard01 = if (result == pov.hand.getOrNull(0)) 1.0f else 0.0f,
       discard02 = if (result == pov.hand.getOrNull(1)) 1.0f else 0.0f,
@@ -80,7 +80,7 @@ class RecordingPlayerControl(
 
   override fun kongFromDraw(pov: PlayerPov): Boolean {
     val result = actualPlayerControl.kongFromDraw(pov)
-    recordedActions.add(Pair(pov, Thought(
+    recordedActions.add(Triple(PlayerControlAction.KONG_FROM_DRAW, pov, Thought(
       winning = 0.0f,
       discard01 = 0.0f,
       discard02 = 0.0f,
@@ -109,7 +109,7 @@ class RecordingPlayerControl(
 
   override fun kongFromDiscard(pov: PlayerPov): Boolean {
     val result = actualPlayerControl.kongFromDiscard(pov)
-    recordedActions.add(Pair(pov, Thought(
+    recordedActions.add(Triple(PlayerControlAction.KONG_FROM_DISCARD, pov, Thought(
       winning = 0.0f,
       discard01 = 0.0f,
       discard02 = 0.0f,
@@ -138,7 +138,7 @@ class RecordingPlayerControl(
 
   override fun pongFromDiscard(pov: PlayerPov): Boolean {
     val result = actualPlayerControl.pongFromDiscard(pov)
-    recordedActions.add(Pair(pov, Thought(
+    recordedActions.add(Triple(PlayerControlAction.PONG_FROM_DISCARD, pov, Thought(
       winning = 0.0f,
       discard01 = 0.0f,
       discard02 = 0.0f,
@@ -167,7 +167,7 @@ class RecordingPlayerControl(
 
   override fun chowFromDiscard(pov: PlayerPov): TileType? {
     val result = actualPlayerControl.chowFromDiscard(pov)
-    recordedActions.add(Pair(pov, Thought(
+    recordedActions.add(Triple(PlayerControlAction.CHOW_FROM_DISCARD, pov, Thought(
       winning = 0.0f,
       discard01 = 0.0f,
       discard02 = 0.0f,
