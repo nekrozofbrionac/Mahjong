@@ -4,39 +4,43 @@ import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.game.Turn
 import de.nekrozofbrionac.mahjong.player.control.PlayerControlAction
+import org.jetbrains.kotlinx.multik.api.d1array
+import org.jetbrains.kotlinx.multik.api.d2array
+import org.jetbrains.kotlinx.multik.api.linalg.dot
+import org.jetbrains.kotlinx.multik.api.mk
+import org.jetbrains.kotlinx.multik.api.ndarray
+import org.jetbrains.kotlinx.multik.ndarray.data.D1Array
+import org.jetbrains.kotlinx.multik.ndarray.data.D2Array
+import org.jetbrains.kotlinx.multik.ndarray.operations.forEach
+import org.jetbrains.kotlinx.multik.ndarray.operations.map
+import org.jetbrains.kotlinx.multik.ndarray.operations.plus
+import org.jetbrains.kotlinx.multik.ndarray.operations.toFloatArray
 import java.io.*
 import kotlin.math.max
-
-class Neuron {
-  var a: FloatArray
-  var b: Float
-
-  constructor(previousLayerSize: Int, bias: Float) {
-    a = FloatArray(previousLayerSize)
-    b = bias
-  }
-
-  fun activation(previousLayerValues: FloatArray): Float {
-    val values = b + previousLayerValues.reduceIndexed { index, acc, fl -> acc + a[index] * fl }
-    return max(0.0f, values)
-  }
-
-  fun initializeWeights() {
-    a = FloatArray(a.size) { (Math.random() * 2 - 1).toFloat() }
-    b = (Math.random() * 2 - 1).toFloat()
-  }
-}
+import kotlin.random.Random
 
 class Brain {
-  val layers: List<List<Neuron>>
+  val inputLayerSize = 6629
+  val outputLayerSize = 22
 
-  constructor(layerSizes: List<Int>) {
-    layers = layerSizes.mapIndexed { index, size ->
-      val previousLayerSize = if (index == 0) inputLayerSize else layerSizes[index - 1]
-      List(size) { Neuron(previousLayerSize, bias = 0.0f).also { it.initializeWeights() } }
-    }.toMutableList().also {
-      it.add(List(22) { Neuron(layerSizes.last(), bias = 0.0f).also { it.initializeWeights() } })
+
+  val layers: List<Pair<D2Array<Float>, D1Array<Float>>>
+
+  constructor(intermediateLayerSizes: List<Int>) {
+
+    var previousLayerSize = inputLayerSize
+    val layersToUse = mutableListOf<Pair<D2Array<Float>, D1Array<Float>>>()
+    for (currentLayerSize in intermediateLayerSizes) {
+      val a = mk.d2array( currentLayerSize, previousLayerSize) { Random.nextFloat() }
+      val b = mk.d1array(currentLayerSize) { Random.nextFloat() }
+      previousLayerSize = currentLayerSize
+      layersToUse.add(Pair(a, b))
     }
+    val lastLayerA = mk.d2array(outputLayerSize, previousLayerSize) { 2*Random.nextFloat() - 1 }
+    val lastLayerB = mk.d1array(outputLayerSize) { 2*Random.nextFloat() - 1 }
+    layersToUse.add(Pair(lastLayerA, lastLayerB))
+
+    layers = layersToUse
   }
 
   constructor(loadFromFile: String) {
@@ -44,16 +48,21 @@ class Brain {
       try {
         val amountOfLayers = inputStream.readInt()
         val layerSizes = List(amountOfLayers) { inputStream.readInt() }
-        assert(layerSizes.last() == 22) { "The last layer size must be 22, but was ${layerSizes.last()}" }
-        layers = layerSizes.mapIndexed { index, size ->
-          val previousLayerSize = if (index == 0) inputLayerSize else layerSizes[index - 1]
-          List(size) {
-            val neuron = Neuron(previousLayerSize, bias = 0.0f)
-            neuron.a = FloatArray(previousLayerSize) { inputStream.readFloat() }
-            neuron.b = inputStream.readFloat()
-            neuron
-          }
+        assert(layerSizes.last() == outputLayerSize) { "The last layer size must be $outputLayerSize, but was ${layerSizes.last()}" }
+
+        val layersToUse = mutableListOf<Pair<D2Array<Float>, D1Array<Float>>>()
+        var previousLayerSize = inputLayerSize
+        layerSizes.forEachIndexed { index, currentLayerSize ->
+          val a = mk.d2array(currentLayerSize, previousLayerSize) { inputStream.readFloat() }
+          val b = mk.d1array(currentLayerSize) { inputStream.readFloat() }
+          previousLayerSize = currentLayerSize
+
+          layersToUse.add(Pair(a, b))
         }
+
+        assert(layersToUse.last().second.size == outputLayerSize) { "The last layer's size must be $outputLayerSize, but was ${layersToUse.last().second.size}" }
+
+        layers = layersToUse
       } catch (_: EOFException) {
         throw AssertionError("Unexpected end of file while loading brain from $loadFromFile")
       }
@@ -61,47 +70,42 @@ class Brain {
   }
 
   fun save(saveToFile: String) {
-    DataOutputStream(BufferedOutputStream(FileOutputStream(saveToFile))).use { outputStream ->
+    DataOutputStream(BufferedOutputStream(FileOutputStream(saveToFile, false))).use { outputStream ->
       outputStream.writeInt(layers.size)
       layers.forEach { layer ->
-        outputStream.writeInt(layer.size)
+        val currentLayerSize = layer.second.size
+        outputStream.writeInt(currentLayerSize) // since the dimensionality of b equals the amount of neurons in its layer
       }
       layers.forEach {
-        it.forEach { neuron ->
-          neuron.a.forEach { weight -> outputStream.writeFloat(weight) }
-          outputStream.writeFloat(neuron.b)
-        }
+        val (a, b) = it
+        a.forEach { value -> outputStream.writeFloat(value) }
+        b.forEach { value -> outputStream.writeFloat(value) }
       }
     }
+  }
+
+  fun activationFunction(value: Float): Float {
+    return max(0.1f * value, value)
+  }
+
+  fun activationFunctionDerivative(value: Float): Float {
+    return if (value > 0) 1.0f else 0.1f
   }
 
   fun think(action: PlayerControlAction, pov: PlayerPov): Thought {
     val inputLayer = povToInputLayer(action, pov)
-    var currentLayerValues = inputLayer
+    assert(inputLayer.size == inputLayerSize) { "Input layer size must be $inputLayerSize, but was ${inputLayer.size}" }
 
-    for (layer in layers) {
-      val nextLayerValues = FloatArray(layer.size)
-      for (i in layer.indices) {
-        nextLayerValues[i] = layer[i].activation(currentLayerValues)
-      }
-      currentLayerValues = nextLayerValues
+    var currentActivationValues: D1Array<Float> = mk.ndarray(inputLayer)
+    for ((a: D2Array<Float>, b: D1Array<Float>) in layers) {
+      currentActivationValues = ((a dot currentActivationValues) + b).map { activationFunction(it) }
     }
-    return floatToThought(currentLayerValues)
+    assert(currentActivationValues.size == outputLayerSize) { "Output layer size must be 22, but was ${currentActivationValues.size}" }
+
+    return floatToThought(currentActivationValues.toFloatArray())
   }
 
-  fun determineError(inputLayer: FloatArray, expectedOutput: FloatArray): FloatArray {
-    var currentLayerValues = inputLayer
-
-    for (layer in layers) {
-      val nextLayerValues = FloatArray(layer.size)
-      for (i in layer.indices) {
-        nextLayerValues[i] = layer[i].activation(currentLayerValues)
-      }
-      currentLayerValues = nextLayerValues
-    }
-    val outputLayer = currentLayerValues
-
-    return outputLayer.zip(expectedOutput) { actual, expected -> actual - expected }.toFloatArray()
+  fun train(samples: List<Pair<FloatArray, FloatArray>>) {
   }
 }
 
