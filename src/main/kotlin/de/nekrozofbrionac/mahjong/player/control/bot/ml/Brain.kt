@@ -23,8 +23,6 @@ import kotlin.math.max
 import kotlin.random.Random
 
 class Brain {
-  val inputLayerSize = 6629
-  val outputLayerSize = 22
   val randomWeightFactor = 0.001f
   val learningRate = 0.1f
 
@@ -32,14 +30,12 @@ class Brain {
     private set
   val layers: MutableList<Pair<D2Array<Float>, D1Array<Float>>>
 
-
-
   fun randomWeight(): Float {
     return Random.nextFloat() * randomWeightFactor
   }
 
   constructor(intermediateLayerSizes: List<Int>) {
-    var previousLayerSize = inputLayerSize
+    var previousLayerSize = INPUT_LAYER_SIZE
     val layersToUse = mutableListOf<Pair<D2Array<Float>, D1Array<Float>>>()
     for (currentLayerSize in intermediateLayerSizes) {
       val a = mk.d2array(currentLayerSize, previousLayerSize) { randomWeight() }
@@ -47,8 +43,8 @@ class Brain {
       previousLayerSize = currentLayerSize
       layersToUse.add(Pair(a, b))
     }
-    val lastLayerA = mk.d2array(outputLayerSize, previousLayerSize) { randomWeight() }
-    val lastLayerB = mk.d1array(outputLayerSize) { randomWeight() }
+    val lastLayerA = mk.d2array(OUTPUT_LAYER_SIZE, previousLayerSize) { randomWeight() }
+    val lastLayerB = mk.d1array(OUTPUT_LAYER_SIZE) { randomWeight() }
     layersToUse.add(Pair(lastLayerA, lastLayerB))
 
     layers = layersToUse
@@ -60,10 +56,10 @@ class Brain {
         amountOfTraining = inputStream.readLong()
         val amountOfLayers = inputStream.readInt()
         val layerSizes = List(amountOfLayers) { inputStream.readInt() }
-        assert(layerSizes.last() == outputLayerSize) { "The last layer size must be $outputLayerSize, but was ${layerSizes.last()}" }
+        assert(layerSizes.last() == OUTPUT_LAYER_SIZE) { "The last layer size must be $OUTPUT_LAYER_SIZE, but was ${layerSizes.last()}" }
 
         val layersToUse = mutableListOf<Pair<D2Array<Float>, D1Array<Float>>>()
-        var previousLayerSize = inputLayerSize
+        var previousLayerSize = INPUT_LAYER_SIZE
         layerSizes.forEachIndexed { index, currentLayerSize ->
           val a = mk.d2array(currentLayerSize, previousLayerSize) { inputStream.readFloat() }
           val b = mk.d1array(currentLayerSize) { inputStream.readFloat() }
@@ -72,7 +68,7 @@ class Brain {
           layersToUse.add(Pair(a, b))
         }
 
-        assert(layersToUse.last().second.size == outputLayerSize) { "The last layer's size must be $outputLayerSize, but was ${layersToUse.last().second.size}" }
+        assert(layersToUse.last().second.size == OUTPUT_LAYER_SIZE) { "The last layer's size must be $OUTPUT_LAYER_SIZE, but was ${layersToUse.last().second.size}" }
 
         layers = layersToUse
       } catch (_: EOFException) {
@@ -111,13 +107,13 @@ class Brain {
   }
 
   fun think(inputLayer: FloatArray): Thought {
-    assert(inputLayer.size == inputLayerSize) { "Input layer size must be $inputLayerSize, but was ${inputLayer.size}" }
+    assert(inputLayer.size == INPUT_LAYER_SIZE) { "Input layer size must be $INPUT_LAYER_SIZE, but was ${inputLayer.size}" }
 
     var currentActivationValues: D1Array<Float> = mk.ndarray(inputLayer)
     for ((a: D2Array<Float>, b: D1Array<Float>) in layers) {
       currentActivationValues = ((a dot currentActivationValues) + b).map { activationFunction(it) }
     }
-    assert(currentActivationValues.size == outputLayerSize) { "Output layer size must be 22, but was ${currentActivationValues.size}" }
+    assert(currentActivationValues.size == OUTPUT_LAYER_SIZE) { "Output layer size must be 22, but was ${currentActivationValues.size}" }
 
     return floatToThought(currentActivationValues.toFloatArray())
   }
@@ -164,77 +160,9 @@ class Brain {
 
   }
 
-  /*
   fun trainSingle(sample: Pair<FloatArray, FloatArray>): List<Pair<D2Array<Float>, D1Array<Float>>> {
-    assert(sample.first.size == inputLayerSize) { "Input layer size must be $inputLayerSize, but was ${sample.first.size}" }
-    assert(sample.second.size == outputLayerSize) { "Expected output layer size must be $outputLayerSize, but was ${sample.second.size}" }
-
-    val activations = mutableListOf<D1Array<Float>>();
-
-    activations.add(mk.ndarray(sample.first))
-    for ((a: D2Array<Float>, b: D1Array<Float>) in layers) {
-      activations.add(((a dot activations.last()) + b).map { activationFunction(it) })
-    }
-    val error = activations.last() - mk.ndarray(sample.second)
-
-    assert(activations.size == layers.size + 1)
-    /*
-    for (layerIndex in ((layers.size - 1)..0)) {
-      val delLinearFunctionDelWeight: D2Array<Float> = activations[layerIndex].reshape(1, activations[layerIndex].size)
-      val delActivationDelLinFunc: D1Array<Float> = activations[layerIndex + 1].map { activationFunctionDerivative(it) }
-      val delErrorDelActivationFunction: D1Array<Float> = error
-      val delErrorDelLinearFunction: D1Array<Float> = (delErrorDelActivationFunction * delActivationDelLinFunc)
-      val delErrorDelWeight: D2Array<Float> = (delErrorDelLinearFunction.reshape(error.size, 1) dot delLinearFunctionDelWeight)
-      val delErrorDelBias: D1Array<Float> = delErrorDelLinearFunction
-
-      // next layer
-      val delLinFuncm1delWeightm1: D2Array<Float> = activations[layerIndex - 1].reshape(1, activations[layerIndex - 1].size)
-      val delActivationm1delLinFuncm1 = activations[layerIndex + 1 - 1].map { activationFunctionDerivative(it) }
-      val delErrorDelActivationm1 = delErrorDelWeight
-      val delErrorDelWeightm1 = delErrorDelActivationm1 dot (delActivationm1delLinFuncm1.reshape(activations[layerIndex+1-1].size, 1) dot delLinFuncm1delWeightm1)
-      val delErrorDelBiasm1 = delErrorDelActivationm1 dot delActivationm1delLinFuncm1
-    }
-    */
-    val gradientWeights: MutableList<Pair<D2Array<Float>, D1Array<Float>>> = mutableListOf<Pair<D2Array<Float>, D1Array<Float>>>()
-    gradientWeights.add(Pair(mk.identity(activations[layers.size].size), error))
-
-    for (li in layers.indices.reversed()) {
-      println("yooo " + li)
-      val delLinearFunctionDelWeight: D2Array<Float> = activations[li].reshape(1, activations[li].size)
-      val delActivationFunctionDelLinearFunction: D1Array<Float> = activations[li+1].map { activationFunctionDerivative(it) }
-
-      val delErrorDelLinearFunction: D1Array<Float> = if (li == layers.size - 1)
-          (error * delActivationFunctionDelLinearFunction) else
-            delActivationFunctionDelLinearFunction;
-
-      val weightsOfLiPlus1 = if (li == layers.size - 1 || li == 0)
-        mk.identity<Float>(delErrorDelLinearFunction.size) else
-          layers[li].first.transpose()
-
-      if (li == 0) {
-        println(layers[li].first.transpose().shape.contentToString())
-      }
-
-      val delErrorDelWeight: D2Array<Float> = weightsOfLiPlus1 dot (delErrorDelLinearFunction.reshape(delErrorDelLinearFunction.size, 1) dot delLinearFunctionDelWeight)
-      println("delErrorDelWeight         " + delErrorDelWeight.shape.contentToString())
-      println("weightsofli               " + weightsOfLiPlus1.shape.contentToString())
-      println("gradientWeights.last      " + gradientWeights.last().first.shape.contentToString())
-      println("linearfunctionDelWeight   " + delLinearFunctionDelWeight.shape.contentToString())
-      println("delErrorDelLinearFunction " + delErrorDelLinearFunction.shape.contentToString())
-      val delErrorDelBias = weightsOfLiPlus1 dot delErrorDelLinearFunction
-
-      gradientWeights.add(Pair(delErrorDelWeight, delErrorDelBias))
-    }
-
-    gradientWeights.reverse()
-    gradientWeights.removeLast()
-    return gradientWeights
-  }
-  */
-
-  fun trainSingle(sample: Pair<FloatArray, FloatArray>): List<Pair<D2Array<Float>, D1Array<Float>>> {
-    assert(sample.first.size == inputLayerSize) { "Input layer size must be $inputLayerSize, but was ${sample.first.size}" }
-    assert(sample.second.size == outputLayerSize) { "Expected output layer size must be $outputLayerSize, but was ${sample.second.size}" }
+    assert(sample.first.size == INPUT_LAYER_SIZE) { "Input layer size must be $INPUT_LAYER_SIZE, but was ${sample.first.size}" }
+    assert(sample.second.size == OUTPUT_LAYER_SIZE) { "Expected output layer size must be $OUTPUT_LAYER_SIZE, but was ${sample.second.size}" }
 
     val activations = mutableListOf<D1Array<Float>>();
 
@@ -280,7 +208,7 @@ class Brain {
   | Value             | Encoding       |
   |-------------------|----------------|
   | Action            | Action (HOE)   |
-  | minFaan           | Int            |
+  | minFaan           | HOE 0-8        |
   | prevailingWind    | Turn (HOE)     |
   | playerSeat        | Turn (HOE)     |
   | prevSeat          | Turn (HOE)     |
@@ -288,7 +216,7 @@ class Brain {
   | oppoSeat          | Turn (HOE)     |
   | turn              | Int            |
   | wallReminaing     | Int            |
-  | currentTurnPlayer | Turn (Int 0-3) |
+  | currentTurnPlayer | Turn (HOE)     |
   | prevMelds         | TileType[4][4] |
   | nextMelds         | TileType[4][4] |
   | oppoMelds         | TileType[4][4] |
@@ -302,43 +230,47 @@ class Brain {
 
   turns are hotoneencoded
 
-  6 + 1 + 5*4 + 1 + 1 + 4 + 34*4*4*3 + 34*8*3 + 34*84 + 34*14 + 34*4*4 + 34*8
-  6629
  */
-const val tileEncodingSize = 34
-const val sizePerMeld = 4 * tileEncodingSize
-const val prevMeldFirstIndex = 6 + 1 + 5 * 4 + 2 + 4
-const val nextMeldFirstIndex = prevMeldFirstIndex + 4 * sizePerMeld
-const val oppoMeldFirstIndex = nextMeldFirstIndex + 4 * sizePerMeld
-const val prevFlowerIndex = oppoMeldFirstIndex + 4 * sizePerMeld
-const val nextFlowerIndex = prevFlowerIndex + 8 * tileEncodingSize
-const val oppoFlowerIndex = nextFlowerIndex + 8 * tileEncodingSize
-const val discardedIndex = oppoFlowerIndex + 8 * tileEncodingSize
-const val handIndex = discardedIndex + 84 * tileEncodingSize
-const val meldsIndex = handIndex + 14 * tileEncodingSize
-const val flowersIndex = meldsIndex + 4 * sizePerMeld
-const val inputLayerSize = flowersIndex + 8 * tileEncodingSize
+const val actionIndex = 0
+val minFaanIndex = actionIndex + PlayerControlAction.entries.size
+val prevailingWindIndex = minFaanIndex + 9
+val playerSeatIndex = prevailingWindIndex + Turn.entries.size
+val prevSeatIndex = playerSeatIndex + Turn.entries.size
+val nextSeatIndex = prevSeatIndex + Turn.entries.size
+val oppoSeatIndex = nextSeatIndex + Turn.entries.size
+val turnIndex = oppoSeatIndex + Turn.entries.size
+val wallRemainingIndex = turnIndex + 1
+val currentTurnPlayerIndex = wallRemainingIndex + 1
+val prevMeldsIndex = currentTurnPlayerIndex + Turn.entries.size
+val nextMeldsIndex = prevMeldsIndex + 4 * 4 * tileEncodingSize
+val oppoMeldsIndex = nextMeldsIndex + 4 * 4 * tileEncodingSize
+val prevFlowerIndex = oppoMeldsIndex + 4 * 4 * tileEncodingSize
+val nextFlowerIndex = prevFlowerIndex + 8 * tileEncodingSize
+val oppoFlowerIndex = nextFlowerIndex + 8 * tileEncodingSize
+val discardedIndex = oppoFlowerIndex + 8 * tileEncodingSize
+val handIndex = discardedIndex + 84 * tileEncodingSize
+val meldsIndex = handIndex + 14 * tileEncodingSize
+val flowersIndex = meldsIndex + 4 * 4 * tileEncodingSize
+val INPUT_LAYER_SIZE = flowersIndex + 8 * tileEncodingSize // currently 8189
+
+val sizePerMeld = 4 * tileEncodingSize
+
 fun povToInputLayer(action: PlayerControlAction, pov: PlayerPov): FloatArray {
-  /* val output = FloatArray(
-    1 + 5 * 4 + 1 + 1 + 4
-        + tileEncodingSize * 4 * 4 * 3
-        + tileEncodingSize * 8 * 3
-        + tileEncodingSize * 84
-        + tileEncodingSize * 14
-        + tileEncodingSize * 4 * 4
-        + tileEncodingSize * 8
-  ) */
-  val output = FloatArray(inputLayerSize)
-  output[0 + action.ordinal] = 1.0f
-  output[6] = pov.minFaan.toFloat()
-  output[6 + 1 + 4 * 0 + pov.prevailingWind.ordinal] = 1.0f
-  output[6 + 1 + 4 * 1 + pov.playerSeat.ordinal] = 1.0f
-  output[6 + 1 + 4 * 2 + pov.prevSeat.ordinal] = 1.0f
-  output[6 + 1 + 4 * 3 + pov.nextSeat.ordinal] = 1.0f
-  output[6 + 1 + 4 * 4 + pov.oppoSeat.ordinal] = 1.0f
-  output[6 + 1 + 4 * 5 + 0] = pov.turn.toFloat()
-  output[6 + 1 + 4 * 5 + 1] = pov.wallRemaining.toFloat()
-  output[6 + 1 + 4 * 5 + 2 + pov.currentTurnPlayer.ordinal] = 1.0f
+  if (pov.minFaan !in 0..8) {
+    throw AssertionError("minFaan must be between 0 and 8, but was ${pov.minFaan}")
+  }
+
+  val output = FloatArray(INPUT_LAYER_SIZE)
+  output[actionIndex + action.ordinal] = 1.0f
+  output[minFaanIndex + pov.minFaan + 1] = pov.minFaan.toFloat()
+  output[prevailingWindIndex + pov.prevailingWind.ordinal] = 1.0f
+  output[playerSeatIndex + pov.playerSeat.ordinal] = 1.0f
+  output[prevSeatIndex + pov.prevSeat.ordinal] = 1.0f
+  output[nextSeatIndex + pov.nextSeat.ordinal] = 1.0f
+  output[oppoSeatIndex + pov.oppoSeat.ordinal] = 1.0f
+  output[turnIndex] = pov.turn.toFloat()
+  output[wallRemainingIndex] = pov.wallRemaining.toFloat()
+  output[currentTurnPlayerIndex + pov.currentTurnPlayer.ordinal] = 1.0f
   // first tile of prevmelds: 1 + 4*4 + 2 + 4
   if (pov.prevMelds.size > 4) {
     throw AssertionError("why does someone have more than 4 melds")
@@ -346,48 +278,48 @@ fun povToInputLayer(action: PlayerControlAction, pov: PlayerPov): FloatArray {
   pov.prevMelds.forEachIndexed { m_i: Int, tiles: List<TileType> ->
     tiles.forEachIndexed { t_i: Int, tile: TileType ->
       tileTypeToWeights(tile).forEachIndexed { t_ii, fl ->
-        output[prevMeldFirstIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
+        output[prevMeldsIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
       }
     }
   }
   pov.nextMelds.forEachIndexed { m_i, tiles ->
     tiles.forEachIndexed { t_i, tile ->
       tileTypeToWeights(tile).forEachIndexed { t_ii, fl ->
-        output[nextMeldFirstIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
+        output[nextMeldsIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
       }
     }
   }
   pov.oppoMelds.forEachIndexed { m_i, tiles ->
     tiles.forEachIndexed { t_i, tile ->
       tileTypeToWeights(tile).forEachIndexed { t_ii, fl ->
-        output[oppoMeldFirstIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
+        output[oppoMeldsIndex + m_i * sizePerMeld + t_i * tileEncodingSize + t_ii] = fl
       }
     }
   }
 
   pov.prevFlowers.forEachIndexed { fi, ft ->
     tileTypeToWeights(ft).forEachIndexed { fii, fl ->
-      output[prevFlowerIndex + fi * tileEncodingSize + fii]
+      output[prevFlowerIndex + fi * tileEncodingSize + fii] = fl
     }
   }
   pov.nextFlowers.forEachIndexed { fi, ft ->
     tileTypeToWeights(ft).forEachIndexed { fii, fl ->
-      output[nextFlowerIndex + fi * tileEncodingSize + fii]
+      output[nextFlowerIndex + fi * tileEncodingSize + fii] = fl
     }
   }
   pov.oppoFlowers.forEachIndexed { fi, ft ->
     tileTypeToWeights(ft).forEachIndexed { fii, fl ->
-      output[oppoFlowerIndex + fi * tileEncodingSize + fii]
+      output[oppoFlowerIndex + fi * tileEncodingSize + fii] = fl
     }
   }
   pov.discarded.forEachIndexed { di, tile ->
     tileTypeToWeights(tile).forEachIndexed { dii, fl ->
-      output[discardedIndex + di * tileEncodingSize + dii]
+      output[discardedIndex + di * tileEncodingSize + dii] = fl
     }
   }
   pov.hand.forEachIndexed { hi, tile ->
     tileTypeToWeights(tile).forEachIndexed { hii, fl ->
-      output[handIndex + hi * tileEncodingSize + hii]
+      output[handIndex + hi * tileEncodingSize + hii] = fl
     }
   }
   pov.melds.forEachIndexed { m_i, tiles ->
@@ -399,13 +331,14 @@ fun povToInputLayer(action: PlayerControlAction, pov: PlayerPov): FloatArray {
   }
   pov.flowers.forEachIndexed { hi, tile ->
     tileTypeToWeights(tile).forEachIndexed { hii, fl ->
-      output[flowersIndex + hi * tileEncodingSize + hii]
+      output[flowersIndex + hi * tileEncodingSize + hii] = fl
     }
   }
   return output
 }
 
 
+val OUTPUT_LAYER_SIZE = 22
 data class Thought(
   val winning: Float,
   val discard01: Float,

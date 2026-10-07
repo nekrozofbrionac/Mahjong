@@ -70,9 +70,9 @@ val gameSimulation = {
 fun main() {
   println("Mahjong training")
 
-  val brainFile = "tiny_brain"
+  val brainFile = "new_brain"
   val mseLogFile = "${brainFile}_mse_log.csv"
-  val brain = if (File(brainFile).exists()) Brain(brainFile) else Brain(listOf(100, 50, 50))
+  val brain = if (File(brainFile).exists()) Brain(brainFile) else Brain(listOf(1000, 500, 200))
 
   println("Trained on: ${brain.amountOfTraining} gamestates")
   println("Layers:     " + brain.layers.size)

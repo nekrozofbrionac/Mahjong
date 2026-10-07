@@ -4,7 +4,7 @@
 ### Player View 
 | Value             | Encoding       |
 |-------------------|----------------|
-| minFaan           | Int            |
+| minFaan           | (HOE)          |
 | prevailingWind    | Turn (HOE)     |
 | playerSeat        | Turn (HOE)     |
 | prevSeat          | Turn (HOE)     | 
@@ -23,10 +23,6 @@
 | hand              | TileType[14]   |
 | melds             | TileType[4][4] |
 | flowers           | TileType[8]    |
-
-
-
-
 
 ### PlayerControl Actions
 | Action              | Encoding |
