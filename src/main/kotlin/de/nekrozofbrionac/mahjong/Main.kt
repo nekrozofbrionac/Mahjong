@@ -17,26 +17,28 @@ fun main() {
   println("Mahjong")
 
   val winners = mutableMapOf<String?, Int>()
-  val maxGames = 1000
+  val maxGames = 100
   val verbose = false
 
-  // val brain = Brain(listOf(1000, 1000, 1000));
+  // val brain = Brain("gamer_brain")// Brain(listOf(1000, 1000, 1000));
 
-  //val recordingPlayerControl1 = RecordingPlayerControl(LobotomizedBot(verbose = verbose))
   //val recordingPlayerControl2 = RecordingPlayerControl(PongSpeedRunBot(verbose = verbose))
-  //val recordingPlayerControl3 = RecordingPlayerControl(PongSpeedRunBot(verbose = verbose))
-  val recordingPlayerControl1 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
+  val recordingPlayerControl1 = RecordingPlayerControl(LobotomizedBot(verbose = verbose))
+  // val recordingPlayerControl2 = RecordingPlayerControl(NeuralNetBot(brain = brain, verbose = verbose))
+  // val recordingPlayerControl3 = RecordingPlayerControl(NeuralNetBot(brain = brain, verbose = verbose))
+  // val recordingPlayerControl4 = RecordingPlayerControl(NeuralNetBot(brain = brain, verbose = verbose))
+  //val recordingPlayerControl1 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
   val recordingPlayerControl2 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
   val recordingPlayerControl3 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
   val recordingPlayerControl4 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
 
   for (i in 0..<maxGames) {
     val players = listOf(
-      BotPlayer("niah1",recordingPlayerControl1),
-      BotPlayer("niah2",recordingPlayerControl2),
-      BotPlayer("niah3", recordingPlayerControl3),
+      BotPlayer("lob",recordingPlayerControl1),
+      BotPlayer("ml1",recordingPlayerControl2),
+      BotPlayer("ml2", recordingPlayerControl3),
       //BotPlayer("Pong3", PongSpeedRunBot(verbose = verbose)),
-      BotPlayer("NIAH4", recordingPlayerControl4),
+      BotPlayer("ml3", recordingPlayerControl4),
       //BotPlayer("ML", NeuralNetBot(verbose = verbose, brain)),
     )
     val game = Game(
@@ -62,7 +64,7 @@ fun main() {
 
         players.forEach {
           if (it.playerControl.winRecorded) {
-            saveRecording(it.playerControl.recording())
+            // saveRecording(it.playerControl.recording())
           }
           it.playerControl.reset();
         }
