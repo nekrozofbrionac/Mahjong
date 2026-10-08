@@ -1,33 +1,18 @@
 package de.nekrozofbrionac.mahjong
 
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
 import de.nekrozofbrionac.mahjong.game.Game
-import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.player.BotPlayer
 import de.nekrozofbrionac.mahjong.player.control.PlayerControlAction
+import de.nekrozofbrionac.mahjong.player.control.RecordedAction
 import de.nekrozofbrionac.mahjong.player.control.RecordingPlayerControl
 import de.nekrozofbrionac.mahjong.player.control.bot.NoIdeaAboutHandsBot
-import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
-import de.nekrozofbrionac.mahjong.player.control.bot.ml.Thought
-import de.nekrozofbrionac.mahjong.player.control.bot.ml.povToInputLayer
-import de.nekrozofbrionac.mahjong.player.control.bot.ml.thoughtToFloat
 import java.io.File
-import java.util.function.Function
 import kotlin.random.Random
 
 
-fun saveProgress(saveToFile: String, amountOfSamples: Long, mseBefore: Float, mseAfter: Float) {
-  File(saveToFile).appendText("$amountOfSamples,$mseBefore,$mseAfter\n")
-}
 
-private val nooneMayUseThis: MutableList<Triple<PlayerControlAction, PlayerPov, Thought>> = mutableListOf()
-@Synchronized
-fun <R> doWithRecordedGames(function: Function<MutableList<Triple<PlayerControlAction, PlayerPov, Thought>>, R>): R {
-  return function.apply(nooneMayUseThis)
-}
-
-
-
-val gameSimulation = {
+fun gameSimulation(whatToDoWhenConcluded: (List<RecordedAction>) -> Unit): () -> Unit = {
   val recordingPlayerControl1 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = false))
   val recordingPlayerControl2 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = false))
   val recordingPlayerControl3 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = false))
@@ -48,10 +33,7 @@ val gameSimulation = {
       { gr ->
         players.forEach {
           if (it.playerControl.winRecorded) {
-            doWithRecordedGames { r ->
-              r.addAll(it.playerControl.recording())
-              print("\rPlayed game with wind ${gr.prevailingWind} and min faan ${gr.minFaan} (${r.size}) samples collected)                                      ")
-            }
+            whatToDoWhenConcluded(it.playerControl.recording())
           }
           it.playerControl.reset();
         }
@@ -68,46 +50,50 @@ val gameSimulation = {
 
 
 fun main() {
-  println("Mahjong training")
+  println("Mahjong Training")
 
   val brainFile = "new_brain"
-  val mseLogFile = "${brainFile}_mse_log.csv"
-  val brain = if (File(brainFile).exists()) Brain(brainFile) else Brain(listOf(1000, 500, 200))
+  val brain = if (File(brainFile).exists() && File(brainFile).isDirectory) {
+    Brain(brainFile)
+  } else {
+    Brain(brainFile, mapOf(
+      Pair(PlayerControlAction.WIN, listOf()),
+      Pair(PlayerControlAction.CHOOSE_DISCARD, listOf(1000, 500, 200, 100)),
+      Pair(PlayerControlAction.KONG_FROM_DRAW, listOf(500, 200, 100)),
+      Pair(PlayerControlAction.KONG_FROM_DISCARD, listOf(500, 200, 100)),
+      Pair(PlayerControlAction.PONG_FROM_DISCARD, listOf(500, 200, 100)),
+      Pair(PlayerControlAction.CHOW_FROM_DISCARD, listOf(500, 200, 100)),
+    ))
+  }
+  println("\n" + brain.smallSummary())
 
-  println("Trained on: ${brain.amountOfTraining} gamestates")
-  println("Layers:     " + brain.layers.size)
-  brain.layers.forEachIndexed{ index, layer -> println("Layer $index:    " + layer.first.shape.contentToString() + " " + layer.second.size) }
+  (0..12)
+    .map { Thread(gameSimulation { brain.addToTrainingCache(it) }) }
+    .forEach { it.start() }
 
-
-  (0..8).map { Thread(gameSimulation) }.forEach { it.start() }
+  val minBatchSize = 50
 
   var waitDotCounter = 0
   while (true) {
-    val sampleSize = doWithRecordedGames { it.size }
-    if (sampleSize < 50) {
-      Thread.sleep(500)
-      print("\r${sampleSize} samples collected (${waitDotCounter})                                       ")
+    if (brain.biggestCacheSize() < minBatchSize) {
+      Thread.sleep(2000)
+      print("\r${brain.biggestCacheSize()} (${brain.cacheSize} total) samples collected.${".".repeat(waitDotCounter % 5)}                                       ")
       waitDotCounter++
       continue
     }
     waitDotCounter = 0
 
-    val samples = doWithRecordedGames { r ->
-      val huh = r.map{ Pair(povToInputLayer(it.first, it.second), thoughtToFloat(it.third)) }
-      r.clear()
-      return@doWithRecordedGames huh
-    }
+    print("\rTraining on ${brain.cacheSize} samples                                                                                                           ")
+    brain.trainOnCache(minBatchSize)
+    print("\rSaving Evaluations...                                                                                           ")
+    brain.evalOnCache()
+    print("\rClearing Cache...                                                                                           ")
+    brain.clearCache()
 
-    print("\rTraining on ${samples.size} samples                                                                      ")
-    val mseBefore = brain.evaluateError(samples)
-    brain.massTrain(samples)
-    val mseAfter = brain.evaluateError(samples)
+    print("\r" + brain.smallSummary())
 
-    print("\r${brain.amountOfTraining}:  $mseBefore -> $mseAfter  (Improvement: ${mseBefore - mseAfter})                                        " +
-          "\nSaving file...   ")
-    brain.save(brainFile)
-    brain.save("${brainFile}_backup")
-    saveProgress(mseLogFile, brain.amountOfTraining, mseBefore, mseAfter)
+    print("\nSaving brain...   ")
+    brain.save()
     print("\rSaving finished.")
   }
 }

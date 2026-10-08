@@ -1,6 +1,6 @@
 package de.nekrozofbrionac.mahjong
 
-import Player
+import de.nekrozofbrionac.mahjong.player.Player
 import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.Board
 import de.nekrozofbrionac.mahjong.board.TileType
@@ -99,7 +99,6 @@ fun <T> List<T>.combinations(k: Int): List<List<T>> {
   }
   return result
 }
-
 
 fun determineHiddenTiles(pov: PlayerPov): List<TileType> {
   val allTiles = mahjongSet.toMutableList()

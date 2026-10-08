@@ -1,7 +1,7 @@
 package de.nekrozofbrionac.mahjong.game
 
 import GameState
-import Player
+import de.nekrozofbrionac.mahjong.player.Player
 import de.nekrozofbrionac.mahjong.board.SimpleBoard
 import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.states.InitialState

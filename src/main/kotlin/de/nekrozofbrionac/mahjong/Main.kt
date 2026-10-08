@@ -2,15 +2,10 @@ package de.nekrozofbrionac.mahjong
 
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.game.GameReport
-import de.nekrozofbrionac.mahjong.game.Turn
 import de.nekrozofbrionac.mahjong.player.BotPlayer
 import de.nekrozofbrionac.mahjong.player.control.RecordingPlayerControl
 import de.nekrozofbrionac.mahjong.player.control.bot.LobotomizedBot
 import de.nekrozofbrionac.mahjong.player.control.bot.NoIdeaAboutHandsBot
-import de.nekrozofbrionac.mahjong.player.control.bot.PongSpeedRunBot
-import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
-import de.nekrozofbrionac.mahjong.player.control.bot.ml.NeuralNetBot
-import de.nekrozofbrionac.mahjong.player.control.bot.ml.saveRecording
 import kotlin.random.Random
 
 fun main() {

@@ -1,6 +1,5 @@
 package de.nekrozofbrionac.mahjong.player
 
-import Player
 import de.nekrozofbrionac.mahjong.board.TileType
 
 abstract class AbstractPlayer : Player {
