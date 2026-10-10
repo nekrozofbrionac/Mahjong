@@ -2,6 +2,7 @@ package de.nekrozofbrionac.mahjong
 
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
 import de.nekrozofbrionac.mahjong.game.Game
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.GamblingNeuralNetBot
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.NeuralNetBot
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.PlayerControlAction
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.RecordingBotPlayer
@@ -11,9 +12,9 @@ import kotlin.random.Random
 
 
 fun main() {
-  println("Mahjong Training, Reinforcement Learning")
+  println("Mahjong Training, Gambling, Playing Itself")
 
-  val brainFile = "WAN_HU_2"
+  val brainFile = "yumeko"
   val brain = if (File(brainFile).exists() && File(brainFile).isDirectory) {
     Brain(brainFile)
   } else {
@@ -30,22 +31,24 @@ fun main() {
   }
   println("\n" + brain.smallSummary())
 
-  val recordingPlayerControl1 = RecordingPlayerControl(NeuralNetBot(verbose = false, brain = brain))
-  val recordingPlayerControl2 = RecordingPlayerControl(NeuralNetBot(verbose = false, brain = brain))
-  val recordingPlayerControl3 = RecordingPlayerControl(NeuralNetBot(verbose = false, brain = brain))
-  val recordingPlayerControl4 = RecordingPlayerControl(NeuralNetBot(verbose = false, brain = brain))
+  val wanhubrain = Brain("WAN_HU")
 
-  val minBatchSize = 100
+  val recordingPlayerControl1 = RecordingPlayerControl(GamblingNeuralNetBot(verbose = false, brain = brain, gamblingFactor = 0.1f))
+  val recordingPlayerControl2 = RecordingPlayerControl(GamblingNeuralNetBot(verbose = false, brain = brain, gamblingFactor = 0.2f))
+  val recordingPlayerControl3 = RecordingPlayerControl(GamblingNeuralNetBot(verbose = false, brain = brain, gamblingFactor = 0.05f))
+  val recordingPlayerControl4 = RecordingPlayerControl(GamblingNeuralNetBot(verbose = false, brain = brain, gamblingFactor = 0.3f))
 
+  val minBatchSize = 50
+
+  var gamesPlayed = 0
   while (true) {
-    var gamesPlayed = 0
     if (brain.biggestCacheSize() < minBatchSize) {
       val players = listOf(
         RecordingBotPlayer("1", recordingPlayerControl1),
         RecordingBotPlayer("2", recordingPlayerControl2),
         RecordingBotPlayer("3", recordingPlayerControl3),
         RecordingBotPlayer("4", recordingPlayerControl4),
-      )
+      ).shuffled()
       val game = Game(
         playerEast = players[0],
         playerSouth = players[1],
@@ -65,12 +68,12 @@ fun main() {
         minFaan = Random.nextInt(0, 9) // 0 to 8
       );
       game.start();
-
-
       gamesPlayed++
+
       print("\r${brain.biggestCacheSize()} (${brain.cacheSize} total) samples collected from $gamesPlayed games                                         ")
       continue
     }
+    gamesPlayed = 0
 
     print("\rTraining on ${brain.cacheSize} samples                                                                                                           ")
     brain.trainOnCache(minBatchSize)

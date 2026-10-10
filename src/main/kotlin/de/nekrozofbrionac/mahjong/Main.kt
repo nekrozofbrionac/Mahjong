@@ -13,20 +13,18 @@ fun main() {
   println("Mahjong")
 
   val brain = Brain("WAN_HU")
+  val yumeko = Brain("yumeko")
   val winners = mutableMapOf<String?, Int>()
-  val maxGames = 10
+  val maxGames = 1000
   val verbose = false
 
   for (i in 0..<maxGames) {
     val players = listOf(
       //TerminalPlayer("Literally me"),
-      BotPlayer("l1", LobotomizedBot(verbose = verbose)),
-      BotPlayer("l2", LobotomizedBot(verbose = verbose)),
-      BotPlayer("l3", LobotomizedBot(verbose = verbose)),
-      BotPlayer("Wan Hu", NeuralNetBot(
-        verbose = true,
-        brain = brain
-      )),
+      BotPlayer("yumeko1", NeuralNetBot(verbose = verbose, brain = yumeko)),
+      BotPlayer("Wan Hu1", NeuralNetBot(verbose = verbose, brain = brain)),
+      BotPlayer("yumeko2", NeuralNetBot(verbose = verbose, brain = yumeko)),
+      BotPlayer("Wan Hu2", NeuralNetBot(verbose = verbose, brain = brain)),
     )
     val game = Game(
       playerEast = players[i % 4],
