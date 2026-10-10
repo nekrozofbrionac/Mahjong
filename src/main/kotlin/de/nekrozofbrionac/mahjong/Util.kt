@@ -47,6 +47,13 @@ fun printPov(pov: PlayerPov) {
   println()
 }
 
+fun formatTile(tile: TileType?): String {
+  if (tile == null) {
+    return "NULL"
+  }
+  return formatTiles(listOf(tile), 1, "")
+}
+
 fun formatTiles(tiles: List<TileType>, perLine: Int, padLeft: String = "        "): String {
   val maxLength = TileType.entries.maxOf { it.shortHand.length }
   return tiles

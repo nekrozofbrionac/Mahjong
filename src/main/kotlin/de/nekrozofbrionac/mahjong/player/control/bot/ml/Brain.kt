@@ -1,14 +1,11 @@
 package de.nekrozofbrionac.mahjong.player.control.bot.ml
 
 import de.nekrozofbrionac.mahjong.game.PlayerPov
-import de.nekrozofbrionac.mahjong.player.control.PlayerControlAction
-import de.nekrozofbrionac.mahjong.player.control.RecordedAction
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.time.LocalDateTime
 import java.util.Locale
-import java.util.concurrent.ConcurrentMap
 import kotlin.io.path.Path
 
 class Brain {
@@ -21,7 +18,8 @@ class Brain {
   private val secondTrainingCache: Map<PlayerControlAction, MutableList<RecordedAction>> =
     PlayerControlAction.entries.associateWith { mutableListOf() }
 
-  private val lastMse: MutableMap<PlayerControlAction, Float> = PlayerControlAction.entries.associateWith { Float.NaN }.toMutableMap()
+  private val lastRecordedError: MutableMap<PlayerControlAction, Pair<Long, Float>>
+    = PlayerControlAction.entries.associateWith { Pair(0L, Float.NaN) }.toMutableMap()
 
   var cacheSize = 0
     get() = trainingCache.values.sumOf { it.size }
@@ -44,7 +42,7 @@ class Brain {
     val initialLobes = mutableMapOf<PlayerControlAction, Lobe>()
     PlayerControlAction.entries.forEach { action ->
       val intermediateSizesToUse = intermediateLayerSizes[action]!!
-      val lobe = Lobe(POV_TO_INPUT_SIZE, action.outputSize, intermediateSizesToUse)
+      val lobe = Lobe(POV_TO_INPUT_SIZE, action.outputSize, intermediateSizesToUse, action.predictionType)
       lobe.save("$fileName/${action.name}")
       initialLobes[action] = lobe
     }
@@ -117,12 +115,12 @@ class Brain {
     cacheInUse = true
     lobes.forEach { (action, lobe) ->
       val samples = trainingCache[action]!!.map { Pair(povToInputLayer(it.pov), it.decision) }
-      val mse = lobe.evaluateError(samples)
-      if (mse.isNaN()) {
+      val error = lobe.evaluateError(samples)
+      if (error.isNaN() || lobe.amountOfTraining == lastRecordedError[action]!!.first) {
         return@forEach
       }
-      File("$brainFileName/${action.name}_mse.csv").appendText("${lobe.amountOfTraining},$mse\n")
-      lastMse[action] = mse
+      File("$brainFileName/${action.name}_error.csv").appendText("${lobe.amountOfTraining},$error\n")
+      lastRecordedError[action] = Pair(lobe.amountOfTraining, error)
     }
   }
 
@@ -152,7 +150,8 @@ class Brain {
     lobes.forEach { (action, lobe) ->
       loveLobeLine += "\n${action.name}:"
       loveLobeLine += "\n    ${lobe.amountOfTraining} Iterations"
-      loveLobeLine += "\n    Layers: ${lobe.layers.size} (${lobe.layers.joinToString(", ") { it.first.shape.contentToString() }})"
+      loveLobeLine += "\n    Layers: ${lobe.layers.size} ${lobe.predictionType}"
+      loveLobeLine += "\n            (${lobe.layers.joinToString(", ") { it.first.shape.contentToString() }})"
     }
     return loveLobeLine
   }
@@ -163,11 +162,12 @@ class Brain {
       val nameWidth = lobes.keys.maxOfOrNull { it.name.length } ?: 0
       val iterWidth = lobes.values.maxOfOrNull { it.amountOfTraining.toString().length } ?: 0
 
-      fun formatMse(mse: Float?): String =
+      fun formatFloat(mse: Float?): String =
         if (mse == null || mse.isNaN()) "n/a" else "%.6f".format(Locale.US, mse)
 
-      val mseWidth = lobes.keys.maxOfOrNull { formatMse(lastMse[it]).length } ?: 0
+      val errorWidth = lobes.keys.maxOfOrNull { formatFloat(lastRecordedError[it]!!.second).length } ?: 0
       val extWidth = lobes.keys.maxOfOrNull { trainingCache[it]!!.size.toString().length } ?: 0
+      val errorNameWidth = lobes.values.maxOf { it.predictionType.errorName.length }
 
       appendLine("------ SUMMARY ------")
       appendLine("$brainFileName $totalIterations total training iterations")
@@ -175,9 +175,13 @@ class Brain {
       lobes.forEach { (action, lobe) ->
         val name = "${action.name}:".padEnd(nameWidth + 1)
         val iterations = lobe.amountOfTraining.toString().padStart(iterWidth)
-        val mse = formatMse(lastMse[action]).padStart(mseWidth)
+
+
+        val error = formatFloat(lastRecordedError[action]!!.second).padStart(errorWidth)
         val external = trainingCache[action]!!.size.toString().padStart(extWidth)
-        appendLine("$name $iterations Iterations, MSE: $mse, Samples Withheld: $external")
+        val errorNameToDisplay = lobe.predictionType.errorName.padEnd(errorNameWidth)
+
+        appendLine("$name Iterations: $iterations, $errorNameToDisplay: $error, Samples Waiting: $external")
       }
     }.trimEnd()
   }

@@ -18,7 +18,6 @@ val mahjongSet = SimpleBoard().wall.filter { !it.isFlower() }.toList()
 
 class NoIdeaAboutHandsBot(
   val iterations: Int = 10000,
-  val minFaan: Int = 3,
   val verbose: Boolean = true,
 ) : PlayerControl {
 
@@ -32,7 +31,7 @@ class NoIdeaAboutHandsBot(
     }
 
     say("I have to discard...")
-    val searchOutcome = search(iterations, pov, minFaan)
+    val searchOutcome = search(iterations, pov, pov.minFaan)
     say("Thought for ${searchOutcome.actualIterations} and came up with:")
     searchOutcome.tileProbabilities.forEachIndexed { i, tp ->
       say("${i.toString().padStart(2)}. : ${formatTiles(listOf(tp.first), 1, "")} ${tp.second}")
@@ -62,7 +61,7 @@ class NoIdeaAboutHandsBot(
     }
     say("Pong with $formattedPong ?")
     say("Thinking about not ponging...")
-    val searchNoPong = search(iterations, pov, minFaan)
+    val searchNoPong = search(iterations, pov, pov.minFaan)
     say("... ${searchNoPong.predictedWins} of ${searchNoPong.actualIterations} winnable futures. Avg depth: ${searchNoPong.averageDepth} (-1).")
 
     val copyOfHand = pov.hand.toMutableList()
@@ -78,7 +77,7 @@ class NoIdeaAboutHandsBot(
     )
 
     say("Thinking about $formattedPong...")
-    val searchWithPong = search(iterations, povAfterPong, minFaan)
+    val searchWithPong = search(iterations, povAfterPong, pov.minFaan)
     say("... ${searchWithPong.predictedWins} of ${searchWithPong.actualIterations} winnable futures. Avg depth: ${searchWithPong.averageDepth}.")
 
     // -1 because of needing one tile more for 14
@@ -116,7 +115,7 @@ class NoIdeaAboutHandsBot(
     say("Chow with ${formattedChows.values.joinToString(", ")} ?")
     // todo probably not perfect, i am forgetting kongs, but so did i within search
     say("Thinking about not chowing...")
-    val searchNoChow = search(iterations, pov, minFaan) // keep in mind that this starts with 13 tiles instead of 14
+    val searchNoChow = search(iterations, pov, pov.minFaan) // keep in mind that this starts with 13 tiles instead of 14
     say("... ${searchNoChow.predictedWins} of ${searchNoChow.actualIterations} winnable futures. Avg depth: ${searchNoChow.averageDepth} (-1).")
 
     costMap[null] =
@@ -137,7 +136,7 @@ class NoIdeaAboutHandsBot(
         discarded = pov.discarded.dropLast(1)
       )
       say("Thinking about ${formattedChows[chow]} ...")
-      val r = search(iterations, hypotheticalPovAfterChow, minFaan)
+      val r = search(iterations, hypotheticalPovAfterChow, pov.minFaan)
       costMap[chow] = pathCost(r.predictedWins.toDouble() / r.actualIterations.toDouble(), r.averageDepth)
       say("... ${r.predictedWins} of ${r.actualIterations} winnable futures. Avg depth: ${r.averageDepth}.")
     }

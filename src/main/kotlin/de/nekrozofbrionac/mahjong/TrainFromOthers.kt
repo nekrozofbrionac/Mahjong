@@ -2,11 +2,11 @@ package de.nekrozofbrionac.mahjong
 
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
 import de.nekrozofbrionac.mahjong.game.Game
-import de.nekrozofbrionac.mahjong.player.BotPlayer
-import de.nekrozofbrionac.mahjong.player.control.PlayerControlAction
-import de.nekrozofbrionac.mahjong.player.control.RecordedAction
-import de.nekrozofbrionac.mahjong.player.control.RecordingPlayerControl
 import de.nekrozofbrionac.mahjong.player.control.bot.NoIdeaAboutHandsBot
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.PlayerControlAction
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.RecordedAction
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.RecordingBotPlayer
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.RecordingPlayerControl
 import java.io.File
 import kotlin.random.Random
 
@@ -17,13 +17,12 @@ fun gameSimulation(whatToDoWhenConcluded: (List<RecordedAction>) -> Unit): () ->
   val recordingPlayerControl2 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = false))
   val recordingPlayerControl3 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = false))
   val recordingPlayerControl4 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = false))
-
   while (true) {
     val players = listOf(
-      BotPlayer("1", recordingPlayerControl1),
-      BotPlayer("2", recordingPlayerControl2),
-      BotPlayer("3", recordingPlayerControl3),
-      BotPlayer("4", recordingPlayerControl4),
+      RecordingBotPlayer("1", recordingPlayerControl1),
+      RecordingBotPlayer("2", recordingPlayerControl2),
+      RecordingBotPlayer("3", recordingPlayerControl3),
+      RecordingBotPlayer("4", recordingPlayerControl4),
     )
     val game = Game(
       playerEast = players[0],
@@ -52,12 +51,12 @@ fun gameSimulation(whatToDoWhenConcluded: (List<RecordedAction>) -> Unit): () ->
 fun main() {
   println("Mahjong Training")
 
-  val brainFile = "new_brain"
+  val brainFile = "WAN_HU"
   val brain = if (File(brainFile).exists() && File(brainFile).isDirectory) {
     Brain(brainFile)
   } else {
     Brain(brainFile, mapOf(
-      Pair(PlayerControlAction.WIN, listOf()),
+      Pair(PlayerControlAction.WIN, listOf(1)),
       Pair(PlayerControlAction.CHOOSE_DISCARD, listOf(1000, 500, 200, 100)),
       Pair(PlayerControlAction.KONG_FROM_DRAW, listOf(500, 200, 100)),
       Pair(PlayerControlAction.KONG_FROM_DISCARD, listOf(500, 200, 100)),

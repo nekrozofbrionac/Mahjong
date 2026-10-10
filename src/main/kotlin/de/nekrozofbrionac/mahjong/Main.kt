@@ -3,38 +3,30 @@ package de.nekrozofbrionac.mahjong
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.game.GameReport
 import de.nekrozofbrionac.mahjong.player.BotPlayer
-import de.nekrozofbrionac.mahjong.player.control.RecordingPlayerControl
 import de.nekrozofbrionac.mahjong.player.control.bot.LobotomizedBot
-import de.nekrozofbrionac.mahjong.player.control.bot.NoIdeaAboutHandsBot
+import de.nekrozofbrionac.mahjong.player.control.bot.PongSpeedRunBot
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
+import de.nekrozofbrionac.mahjong.player.control.bot.ml.NeuralNetBot
 import kotlin.random.Random
 
 fun main() {
   println("Mahjong")
 
+  val brain = Brain("WAN_HU")
   val winners = mutableMapOf<String?, Int>()
-  val maxGames = 100
+  val maxGames = 10
   val verbose = false
-
-  // val brain = Brain("gamer_brain")// Brain(listOf(1000, 1000, 1000));
-
-  //val recordingPlayerControl2 = RecordingPlayerControl(PongSpeedRunBot(verbose = verbose))
-  val recordingPlayerControl1 = RecordingPlayerControl(LobotomizedBot(verbose = verbose))
-  // val recordingPlayerControl2 = RecordingPlayerControl(NeuralNetBot(brain = brain, verbose = verbose))
-  // val recordingPlayerControl3 = RecordingPlayerControl(NeuralNetBot(brain = brain, verbose = verbose))
-  // val recordingPlayerControl4 = RecordingPlayerControl(NeuralNetBot(brain = brain, verbose = verbose))
-  //val recordingPlayerControl1 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
-  val recordingPlayerControl2 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
-  val recordingPlayerControl3 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
-  val recordingPlayerControl4 = RecordingPlayerControl(NoIdeaAboutHandsBot(iterations = 100, verbose = verbose))
 
   for (i in 0..<maxGames) {
     val players = listOf(
-      BotPlayer("lob",recordingPlayerControl1),
-      BotPlayer("ml1",recordingPlayerControl2),
-      BotPlayer("ml2", recordingPlayerControl3),
-      //BotPlayer("Pong3", PongSpeedRunBot(verbose = verbose)),
-      BotPlayer("ml3", recordingPlayerControl4),
-      //BotPlayer("ML", NeuralNetBot(verbose = verbose, brain)),
+      //TerminalPlayer("Literally me"),
+      BotPlayer("l1", LobotomizedBot(verbose = verbose)),
+      BotPlayer("l2", LobotomizedBot(verbose = verbose)),
+      BotPlayer("l3", LobotomizedBot(verbose = verbose)),
+      BotPlayer("Wan Hu", NeuralNetBot(
+        verbose = true,
+        brain = brain
+      )),
     )
     val game = Game(
       playerEast = players[i % 4],
@@ -56,14 +48,6 @@ fun main() {
           println(it.first.toString().padStart(longestName) + ": " + it.second.toString().padStart(longestScore))
         }
         println("Total".padStart(longestName) + ": " + i.toString().padStart(longestScore))
-
-        players.forEach {
-          if (it.playerControl.winRecorded) {
-            // saveRecording(it.playerControl.recording())
-          }
-          it.playerControl.reset();
-        }
-
       },
       verbose = verbose,
       wind = ((i / 4) % 4),

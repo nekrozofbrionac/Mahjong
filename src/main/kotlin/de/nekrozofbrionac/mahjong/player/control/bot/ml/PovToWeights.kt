@@ -15,8 +15,6 @@ import de.nekrozofbrionac.mahjong.game.Turn
   | prevSeat          | Turn (HOE)     |
   | nextSeat          | Turn (HOE)     |
   | oppoSeat          | Turn (HOE)     |
-  | turn              | Int            |
-  | wallReminaing     | Int            |
   | currentTurnPlayer | Turn (HOE)     |
 
   OTHER IDEA: zones per tile type:
@@ -32,6 +30,8 @@ import de.nekrozofbrionac.mahjong.game.Turn
   melds 4*4
   flowers 1
 
+  turn and wall-remaining are encoded via tiles that are visible to the player.
+
  */
 private val minFaanIndex = 0
 private val prevailingWindIndex = minFaanIndex + 9
@@ -39,9 +39,7 @@ private val playerSeatIndex = prevailingWindIndex + Turn.entries.size
 private val prevSeatIndex = playerSeatIndex + Turn.entries.size
 private val nextSeatIndex = prevSeatIndex + Turn.entries.size
 private val oppoSeatIndex = nextSeatIndex + Turn.entries.size
-private val turnIndex = oppoSeatIndex + Turn.entries.size
-private val wallRemainingIndex = turnIndex + 1
-private val currentTurnPlayerIndex = wallRemainingIndex + 1
+private val currentTurnPlayerIndex = oppoSeatIndex + Turn.entries.size
 private val firstTileIndex = currentTurnPlayerIndex + Turn.entries.size
 
 private const val zoneSize = 16 + 16 + 16 + 1 + 1 + 1 + 4 + 4 + 16 + 1
@@ -61,8 +59,6 @@ fun povToInputLayer(pov: PlayerPov): FloatArray {
   output[prevSeatIndex + pov.prevSeat.ordinal] = 1.0f
   output[nextSeatIndex + pov.nextSeat.ordinal] = 1.0f
   output[oppoSeatIndex + pov.oppoSeat.ordinal] = 1.0f
-  output[turnIndex] = pov.turn.toFloat()
-  output[wallRemainingIndex] = pov.wallRemaining.toFloat()
   output[currentTurnPlayerIndex + pov.currentTurnPlayer.ordinal] = 1.0f
 
   TileType.entries.forEachIndexed { i, tileToEncode ->

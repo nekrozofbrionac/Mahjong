@@ -1,7 +1,8 @@
-package de.nekrozofbrionac.mahjong.player.control
+package de.nekrozofbrionac.mahjong.player.control.bot.ml
 
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.game.PlayerPov
+import de.nekrozofbrionac.mahjong.player.control.PlayerControl
 
 data class RecordedAction(
   val action: PlayerControlAction,
@@ -53,36 +54,25 @@ class RecordingPlayerControl(
 
   override fun chooseDiscard(pov: PlayerPov): TileType {
     val result = actualPlayerControl.chooseDiscard(pov)
-    recordedActions.add(RecordedAction(
-      PlayerControlAction.CHOOSE_DISCARD,
-      pov,
-      floatArrayOf(
-        if (result == pov.hand.getOrNull(0)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(1)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(2)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(3)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(4)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(5)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(6)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(7)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(8)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(9)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(10)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(11)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(12)) 1.0f else 0.0f,
-        if (result == pov.hand.getOrNull(13)) 1.0f else 0.0f,
+    recordedActions.add(
+      RecordedAction(
+        PlayerControlAction.CHOOSE_DISCARD,
+        pov,
+        tileTypeToWeightsWithoutFlowers(result)
       )
-    ));
+    );
     return result
   }
 
   override fun kongFromDraw(pov: PlayerPov): Boolean {
     val result = actualPlayerControl.kongFromDraw(pov)
-    recordedActions.add(RecordedAction(
-      PlayerControlAction.KONG_FROM_DRAW,
-      pov,
-      floatArrayOf(if (result) 1.0f else 0.0f)
-    ));
+    recordedActions.add(
+      RecordedAction(
+        PlayerControlAction.KONG_FROM_DRAW,
+        pov,
+        floatArrayOf(if (result) 1.0f else 0.0f)
+      )
+    );
     return result
   }
 
@@ -90,9 +80,7 @@ class RecordingPlayerControl(
     val result = actualPlayerControl.kongFromDiscard(pov)
     recordedActions.add(
       RecordedAction(
-        PlayerControlAction.KONG_FROM_DISCARD, pov, floatArrayOf(
-          if (result) 1.0f else 0.0f,
-        )
+        PlayerControlAction.KONG_FROM_DISCARD, pov, floatArrayOf(if (result) 1.0f else 0.0f)
       )
     );
     return result
@@ -115,7 +103,7 @@ class RecordingPlayerControl(
     recordedActions.add(
       RecordedAction(
         PlayerControlAction.CHOW_FROM_DISCARD, pov, floatArrayOf(
-          if (result != null) 1.0f else 0.0f,
+          if (result == null) 1.0f else 0.0f,
           if (result != null && result.numeral == pov.discarded.lastOrNull()?.numeral) 1.0f else 0.0f,
           if (result != null && result.numeral == pov.discarded.lastOrNull()?.numeral?.minus(1)) 1.0f else 0.0f,
           if (result != null && result.numeral == pov.discarded.lastOrNull()?.numeral?.minus(2)) 1.0f else 0.0f,
