@@ -182,6 +182,7 @@ class Game(
   }
 
   fun terminate(gameReport: GameReport) {
+    (0..3).forEach { getPlayerByIndex(it).playerControl.endGame() }
     if (winnerEval == null || winner == null) {
       onTermination(gameReport)
     } else {

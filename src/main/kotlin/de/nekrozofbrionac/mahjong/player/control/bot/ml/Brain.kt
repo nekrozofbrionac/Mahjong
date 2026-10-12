@@ -1,5 +1,8 @@
 package de.nekrozofbrionac.mahjong.player.control.bot.ml
 
+import de.nekrozofbrionac.mahjong.board.TileType
+import de.nekrozofbrionac.mahjong.formatTile
+import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.PlayerPov
 import java.io.File
 import java.nio.file.Files
@@ -18,8 +21,8 @@ class Brain {
   private val secondTrainingCache: Map<PlayerControlAction, MutableList<RecordedAction>> =
     PlayerControlAction.entries.associateWith { mutableListOf() }
 
-  private val lastRecordedError: MutableMap<PlayerControlAction, Pair<Long, Float>>
-    = PlayerControlAction.entries.associateWith { Pair(0L, Float.NaN) }.toMutableMap()
+  private val lastRecordedError: MutableMap<PlayerControlAction, Pair<Long, Float>> =
+    PlayerControlAction.entries.associateWith { Pair(0L, Float.NaN) }.toMutableMap()
 
   var cacheSize = 0
     get() = trainingCache.values.sumOf { it.size }
@@ -70,11 +73,12 @@ class Brain {
     pov: PlayerPov
   ): FloatArray {
     val lobe = lobes[playerControlAction] ?: throw IllegalStateException("No lobe for $playerControlAction")
-    return lobe.think(povToInputLayer(pov))
+    // println("Thinking about $playerControlAction with POV: ${pov.hand.toString()}")
+    return lobe.think(povToInputLayer(pov), generateOutputMask(pov, playerControlAction))
   }
 
   fun biggestCacheSize(): Int {
-    return trainingCache.values.maxOf{ it.size }
+    return trainingCache.values.maxOf { it.size }
   }
 
 
@@ -106,7 +110,13 @@ class Brain {
     relocateLonelySamples(minBatchSize)
 
     lobes.forEach { (action, lobe) ->
-      val trainingData = trainingCache[action]!!.map { Pair(povToInputLayer(it.pov), it.decision) }
+      val trainingData = trainingCache[action]!!.map {
+        TrainingSample(
+          povToInputLayer(it.pov),
+          it.decision,
+          generateOutputMask(it.pov, action)
+        )
+      }
       lobe.massTrain(trainingData)
     }
   }
@@ -114,7 +124,21 @@ class Brain {
   fun evalOnCache() {
     cacheInUse = true
     lobes.forEach { (action, lobe) ->
-      val samples = trainingCache[action]!!.map { Pair(povToInputLayer(it.pov), it.decision) }
+      val samples = trainingCache[action]!!.map {
+        println("\nfaan:     " + it.pov.minFaan)
+        println(action)
+        if (action == PlayerControlAction.CHOW_FROM_DISCARD || action == PlayerControlAction.PONG_FROM_DISCARD || action == PlayerControlAction.KONG_FROM_DISCARD) {
+          println("discarded  " + formatTile(it.pov.discarded.lastOrNull() ?: throw IllegalStateException("No discarded tile found, but game suggested to chow/pong/kong.")))
+        }
+        println("pov hand   " + formatTiles(it.pov.hand.sorted(), 14, "") + "  " + it.pov.melds.joinToString("  ") {m ->  formatTiles(m, 4, "") })
+        if (action == PlayerControlAction.CHOOSE_DISCARD) {
+          println("           " + TileType.entries.joinToString(" ") { formatTile(it).padStart(4) })
+        }
+        println("Mask       " + generateOutputMask(it.pov, action).joinToString(" ") { "%.0f".format(it).padStart(4) })
+        println("expected   " + it.decision.joinToString(" ") { "%.0f".format(it).padStart(4) })
+        println("actual     " + lobe.think(povToInputLayer(it.pov), generateOutputMask(it.pov, action)).joinToString(" ") { "%.2f".format(it).padStart(4) })
+        TrainingSample(povToInputLayer(it.pov), it.decision, generateOutputMask(it.pov, action))
+      }
       val error = lobe.evaluateError(samples)
       if (error.isNaN() || lobe.amountOfTraining == lastRecordedError[action]!!.first) {
         return@forEach

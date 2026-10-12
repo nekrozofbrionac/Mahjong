@@ -3,6 +3,7 @@ package de.nekrozofbrionac.mahjong.player.control.bot
 import de.nekrozofbrionac.mahjong.board.SimpleBoard
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.combinations
+import de.nekrozofbrionac.mahjong.determineChowPossibilities
 import de.nekrozofbrionac.mahjong.determineHiddenTiles
 import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.PlayerPov
@@ -45,11 +46,105 @@ class NoIdeaAboutHandsBot(
   }
 
   override fun kongFromDraw(pov: PlayerPov): Boolean {
-    return true
+    val kongedTile = pov.hand.last()
+    val formattedKong = formatTiles(listOf(kongedTile, kongedTile, kongedTile, kongedTile), 4, "")
+
+    if (verbose) {
+      printPov(pov)
+    }
+    say("Kong with $formattedKong ?")
+    say("Thinking about not konging...")
+    val searchNoKong = search(iterations, pov, pov.minFaan)
+    say("... ${searchNoKong.predictedWins} of ${searchNoKong.actualIterations} winnable futures. Avg depth: ${searchNoKong.averageDepth}.")
+
+    val copyOfHand = pov.hand.toMutableList()
+    val copyOfMelds = pov.melds.toMutableList()
+
+    repeat(4) { copyOfHand.remove(kongedTile) }
+    copyOfMelds.add(listOf(kongedTile, kongedTile, kongedTile, kongedTile))
+    val povAfterKong = pov.copy(
+      hand = copyOfHand,
+      melds = copyOfMelds,
+    )
+
+    say("Thinking about $formattedKong...")
+    val searchWithKong = search(iterations, povAfterKong, pov.minFaan)
+    say("... ${searchWithKong.predictedWins} of ${searchWithKong.actualIterations} winnable futures. Avg depth: ${searchWithKong.averageDepth}. (-1) ")
+
+    val noKongTerm = pathCost(
+      searchNoKong.predictedWins.toDouble() / searchNoKong.actualIterations.toDouble(),
+      searchNoKong.averageDepth
+    )
+    // -1 because of getting to draw 1 more tile
+    val withKongTerm = pathCost(
+      searchWithKong.predictedWins.toDouble() / searchWithKong.actualIterations.toDouble(),
+      searchWithKong.averageDepth - 1.0
+    )
+
+    val output = if (withKongTerm.isNaN() && noKongTerm.isNaN()) {
+      true
+    } else if (withKongTerm.isNaN()) {
+      false
+    } else if (noKongTerm.isNaN()) {
+      true
+    } else {
+      withKongTerm <= noKongTerm
+    }
+    say("I will go with ${if (output) formattedKong else "no kong"}.")
+    say("PathCosts: (No Kong: $noKongTerm), ($formattedKong : $withKongTerm).")
+    return output
   }
 
   override fun kongFromDiscard(pov: PlayerPov): Boolean {
-    return true
+    val kongedTile = pov.discarded.last()
+    val formattedKong = formatTiles(listOf(kongedTile, kongedTile, kongedTile, kongedTile), 4, "")
+
+    if (verbose) {
+      printPov(pov)
+    }
+    say("Kong with $formattedKong ?")
+    say("Thinking about not konging...")
+    val searchNoKong = search(iterations, pov, pov.minFaan)
+    say("... ${searchNoKong.predictedWins} of ${searchNoKong.actualIterations} winnable futures. Avg depth: ${searchNoKong.averageDepth} (-1).")
+
+    val copyOfHand = pov.hand.toMutableList()
+    val copyOfMelds = pov.melds.toMutableList()
+
+    copyOfHand.add(kongedTile)
+    repeat(4) { copyOfHand.remove(kongedTile) }
+    copyOfMelds.add(listOf(kongedTile, kongedTile, kongedTile, kongedTile))
+    val povAfterKong = pov.copy(
+      hand = copyOfHand,
+      melds = copyOfMelds,
+      discarded = pov.discarded.dropLast(1),
+    )
+
+    say("Thinking about $formattedKong...")
+    val searchWithKong = search(iterations, povAfterKong, pov.minFaan)
+    say("... ${searchWithKong.predictedWins} of ${searchWithKong.actualIterations} winnable futures. Avg depth: ${searchWithKong.averageDepth}.")
+
+    // -1 because of needing one tile more for 14
+    val noKongTerm = pathCost(
+      searchNoKong.predictedWins.toDouble() / searchNoKong.actualIterations.toDouble(),
+      searchNoKong.averageDepth - 1.0
+    )
+    val withKongTerm = pathCost(
+      searchWithKong.predictedWins.toDouble() / searchWithKong.actualIterations.toDouble(),
+      searchWithKong.averageDepth
+    )
+
+    val output = if (withKongTerm.isNaN() && noKongTerm.isNaN()) {
+      true
+    } else if (withKongTerm.isNaN()) {
+      false
+    } else if (noKongTerm.isNaN()) {
+      true
+    } else {
+      withKongTerm <= noKongTerm
+    }
+    say("I will go with ${if (output) formattedKong else "no kong"}.")
+    say("PathCosts: (No Kong: $noKongTerm), ($formattedKong : $withKongTerm).")
+    return output
   }
 
   override fun pongFromDiscard(pov: PlayerPov): Boolean {
@@ -83,7 +178,7 @@ class NoIdeaAboutHandsBot(
     // -1 because of needing one tile more for 14
     val noPongTerm = pathCost(
       searchNoPong.predictedWins.toDouble() / searchNoPong.actualIterations.toDouble(),
-      searchNoPong.averageDepth - 1
+      searchNoPong.averageDepth - 1.0
     )
     val withPongTerm = pathCost(
       searchWithPong.predictedWins.toDouble() / searchWithPong.actualIterations.toDouble(),

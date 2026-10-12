@@ -51,17 +51,18 @@ fun gameSimulation(whatToDoWhenConcluded: (List<RecordedAction>) -> Unit): () ->
 fun main() {
   println("Mahjong Training")
 
-  val brainFile = "WAN_HU"
+  val brainFile = "Wan_Hu"
   val brain = if (File(brainFile).exists() && File(brainFile).isDirectory) {
     Brain(brainFile)
   } else {
+    val hiddenLayers = listOf(1024, 512, 256, 128)
     Brain(brainFile, mapOf(
       Pair(PlayerControlAction.WIN, listOf(1)),
-      Pair(PlayerControlAction.CHOOSE_DISCARD, listOf(1000, 500, 200, 100)),
-      Pair(PlayerControlAction.KONG_FROM_DRAW, listOf(500, 200, 100)),
-      Pair(PlayerControlAction.KONG_FROM_DISCARD, listOf(500, 200, 100)),
-      Pair(PlayerControlAction.PONG_FROM_DISCARD, listOf(500, 200, 100)),
-      Pair(PlayerControlAction.CHOW_FROM_DISCARD, listOf(500, 200, 100)),
+      Pair(PlayerControlAction.CHOOSE_DISCARD, hiddenLayers),
+      Pair(PlayerControlAction.KONG_FROM_DRAW, hiddenLayers),
+      Pair(PlayerControlAction.KONG_FROM_DISCARD, hiddenLayers),
+      Pair(PlayerControlAction.PONG_FROM_DISCARD, hiddenLayers),
+      Pair(PlayerControlAction.CHOW_FROM_DISCARD, hiddenLayers),
     ))
   }
   println("\n" + brain.smallSummary())

@@ -3,28 +3,25 @@ package de.nekrozofbrionac.mahjong
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.game.GameReport
 import de.nekrozofbrionac.mahjong.player.BotPlayer
-import de.nekrozofbrionac.mahjong.player.control.bot.LobotomizedBot
 import de.nekrozofbrionac.mahjong.player.control.bot.PongSpeedRunBot
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.NeuralNetBot
-import kotlin.random.Random
 
 fun main() {
   println("Mahjong")
 
-  val brain = Brain("WAN_HU")
-  val yumeko = Brain("yumeko")
+  val brain = Brain("Wan_Hu")
   val winners = mutableMapOf<String?, Int>()
-  val maxGames = 1000
+  val maxGames = 100
   val verbose = false
 
   for (i in 0..<maxGames) {
     val players = listOf(
       //TerminalPlayer("Literally me"),
-      BotPlayer("yumeko1", NeuralNetBot(verbose = verbose, brain = yumeko)),
-      BotPlayer("Wan Hu1", NeuralNetBot(verbose = verbose, brain = brain)),
-      BotPlayer("yumeko2", NeuralNetBot(verbose = verbose, brain = yumeko)),
-      BotPlayer("Wan Hu2", NeuralNetBot(verbose = verbose, brain = brain)),
+      BotPlayer("Wan_Hu", NeuralNetBot(verbose = true, brain = brain)),
+      BotPlayer("lobo1", PongSpeedRunBot()),
+      BotPlayer("lobo2", PongSpeedRunBot()),
+      BotPlayer("lobo3", PongSpeedRunBot() ),
     )
     val game = Game(
       playerEast = players[i % 4],
@@ -47,7 +44,7 @@ fun main() {
         }
         println("Total".padStart(longestName) + ": " + i.toString().padStart(longestScore))
       },
-      verbose = verbose,
+      verbose = false,
       wind = ((i / 4) % 4),
       minFaan = Random.nextInt(0, 9) // 0 to 8
     );

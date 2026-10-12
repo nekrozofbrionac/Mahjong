@@ -2,6 +2,7 @@ package de.nekrozofbrionac.mahjong.player.control.bot
 
 import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
+import de.nekrozofbrionac.mahjong.determineChowPossibilities
 import de.nekrozofbrionac.mahjong.player.control.PlayerControl
 import de.nekrozofbrionac.mahjong.printPov
 

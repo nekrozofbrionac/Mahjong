@@ -1,7 +1,7 @@
 package de.nekrozofbrionac.mahjong.player.control.bot.ml
 
-import de.nekrozofbrionac.mahjong.board.NUMBER_OF_TILES_WITHOUT_FLOWERS
 import de.nekrozofbrionac.mahjong.board.TileType
+import de.nekrozofbrionac.mahjong.determineChowPossibilities
 import de.nekrozofbrionac.mahjong.formatTile
 import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.PlayerPov
@@ -41,14 +41,11 @@ class NeuralNetBot(
 
   override fun chooseDiscard(pov: PlayerPov): TileType {
     val thought = brain.thinkAbout(PlayerControlAction.CHOOSE_DISCARD, pov)
-    val tileSelection = TileType.entries.subList(0, NUMBER_OF_TILES_WITHOUT_FLOWERS).sortedByDescending { tile -> thought[tile.ordinal] }.subList(0, 14)
     val bestTile = pov.hand.distinct().sortedByDescending { tile -> thought[tile.ordinal] }
 
     printPovIfVerbose(pov)
     printlnIfVerbose("NeuralNetBot action: chooseDiscard")
-    printlnIfVerbose("NeuralNetBot says: ${thought.contentToString()}")
-    printlnIfVerbose("                   The general selection is           ${tileSelection.map { formatTileAndThought(it, thought) }}")
-    printlnIfVerbose("                   The nearest existing selection is  ${bestTile.map { formatTileAndThought(it, thought) }}")
+    printlnIfVerbose("The nearest existing selection is  ${bestTile.map { formatTileAndThought(it, thought) }}")
 
     return bestTile[0]
   }

@@ -1,7 +1,5 @@
 package de.nekrozofbrionac.mahjong.player.control.bot.ml
 
-import de.nekrozofbrionac.mahjong.game.PlayerPov
-import de.nekrozofbrionac.mahjong.game.Turn
 import org.jetbrains.kotlinx.multik.api.d1array
 import org.jetbrains.kotlinx.multik.api.d2array
 import org.jetbrains.kotlinx.multik.api.linalg.dot
@@ -24,6 +22,32 @@ import java.io.*
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.sqrt
+
+data class TrainingSample(
+  val input: FloatArray,
+  val expectedOutput: FloatArray,
+  val mask: FloatArray
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as TrainingSample
+
+    if (!input.contentEquals(other.input)) return false
+    if (!expectedOutput.contentEquals(other.expectedOutput)) return false
+    if (!mask.contentEquals(other.mask)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = input.contentHashCode()
+    result = 31 * result + expectedOutput.contentHashCode()
+    result = 31 * result + mask.contentHashCode()
+    return result
+  }
+}
 
 enum class PredictionType(val errorName: String) {
   LINEAR("MSE"),
@@ -149,27 +173,24 @@ class Lobe {
     return if (value > 0) 1.0f else 0.1f
   }
 
-  fun think(inputLayer: FloatArray): FloatArray {
+  fun think(inputLayer: FloatArray, mask: FloatArray): FloatArray {
     assert(inputLayer.size == inputNodesSize) { "Input layer size must be $inputNodesSize, but was ${inputLayer.size}" }
 
     var currentActivationValues: D1Array<Float> = mk.ndarray(inputLayer)
     for ((a: D2Array<Float>, b: D1Array<Float>) in layers.subList(0, layers.size - 1)) {
       currentActivationValues = ((a dot currentActivationValues) + b).map { activationFunction(it) }
     }
+    val lastNodeValuesMasked: D1Array<Float> =
+      mk.ndarray(mask) * ((layers.last().first dot currentActivationValues) + layers.last().second)
+
+    if (predictionType == PredictionType.SOFTMAX || predictionType == PredictionType.LOGISTIC) {
+      mask.forEachIndexed { index, value -> if (value == 0.0f) lastNodeValuesMasked[index] = Float.NEGATIVE_INFINITY }
+    }
+
     val lastActivationValues: D1Array<Float> = when (predictionType) {
-      PredictionType.LINEAR -> ((layers.last().first dot currentActivationValues) + layers.last().second).map {
-        activationFunction(
-          it
-        )
-      }
-
-      PredictionType.LOGISTIC -> ((layers.last().first dot currentActivationValues) + layers.last().second).map {
-        sigmoid(
-          it
-        )
-      }
-
-      PredictionType.SOFTMAX -> softmax(((layers.last().first dot currentActivationValues) + layers.last().second))
+      PredictionType.LINEAR -> lastNodeValuesMasked.map { activationFunction(it) }
+      PredictionType.LOGISTIC -> lastNodeValuesMasked.map { sigmoid(it) }
+      PredictionType.SOFTMAX -> softmax(lastNodeValuesMasked)
     }
 
     assert(lastActivationValues.size == outputLayerSize) { "Output layer size must be $outputLayerSize, but was ${currentActivationValues.size}" }
@@ -177,7 +198,7 @@ class Lobe {
     return lastActivationValues.toFloatArray()
   }
 
-  fun evaluateError(samples: List<Pair<FloatArray, FloatArray>>): Float {
+  fun evaluateError(samples: List<TrainingSample>): Float {
     return when (predictionType) {
       PredictionType.LINEAR -> evaluateErrorMSE(samples)
       PredictionType.LOGISTIC -> evaluateErrorLogLoss(samples)
@@ -185,13 +206,13 @@ class Lobe {
     }
   }
 
-  fun evaluateErrorMSE(samples: List<Pair<FloatArray, FloatArray>>): Float {
+  fun evaluateErrorMSE(samples: List<TrainingSample>): Float {
     if (samples.isEmpty()) {
       return Float.NaN
     }
     return samples
       .map { sample ->
-        val error = (mk.ndarray(think(sample.first)) - mk.ndarray(sample.second)).map { it * it }
+        val error = (mk.ndarray(think(sample.input, sample.mask)) - mk.ndarray(sample.expectedOutput)).map { it * it }
         return@map error
       }
       .reduce { acc, unit -> acc + unit }
@@ -200,14 +221,14 @@ class Lobe {
       .reduce { acc, f -> acc + f }
   }
 
-  fun evaluateErrorLogLoss(samples: List<Pair<FloatArray, FloatArray>>): Float {
+  fun evaluateErrorLogLoss(samples: List<TrainingSample>): Float {
     if (samples.isEmpty()) {
       return Float.NaN
     }
     return samples
       .map { sample ->
-        val predicted = think(sample.first)
-        val actual = sample.second
+        val predicted = think(sample.input, sample.mask)
+        val actual = sample.expectedOutput
 
         val error = mk.d1array(predicted.size) { 0.0f }
         for (i in predicted.indices) {
@@ -220,17 +241,17 @@ class Lobe {
       .reduce { acc, unit -> acc + unit }
       .map { it / samples.size }
       .toFloatArray()
-      .reduce { acc, f -> acc + f } * -1.0f / samples[0].second.size
+      .reduce { acc, f -> acc + f } * -1.0f / samples[0].expectedOutput.size
   }
 
-  fun evaluateErrorSoftMax(samples: List<Pair<FloatArray, FloatArray>>): Float {
+  fun evaluateErrorSoftMax(samples: List<TrainingSample>): Float {
     if (samples.isEmpty()) {
       return Float.NaN
     }
     return samples
       .map { sample ->
-        val predicted = think(sample.first)
-        val actual = sample.second
+        val predicted = think(sample.input, sample.mask)
+        val actual = sample.expectedOutput
 
         var error = 0.0f
         for (i in actual.indices) {
@@ -245,7 +266,7 @@ class Lobe {
       .let { it / samples.size }
   }
 
-  fun massTrain(samples: List<Pair<FloatArray, FloatArray>>) {
+  fun massTrain(samples: List<TrainingSample>) {
     if (samples.isEmpty()) {
       return
     }
@@ -279,27 +300,25 @@ class Lobe {
 
   }
 
-  fun trainSingle(sample: Pair<FloatArray, FloatArray>): List<Pair<D2Array<Float>, D1Array<Float>>> {
-    assert(sample.first.size == inputNodesSize) { "Input layer size must be $inputNodesSize, but was ${sample.first.size}" }
-    assert(sample.second.size == outputLayerSize) { "Expected output layer size must be $outputLayerSize, but was ${sample.second.size}" }
-
+  fun trainSingle(sample: TrainingSample): List<Pair<D2Array<Float>, D1Array<Float>>> {
+    assert(sample.input.size == inputNodesSize) { "Input layer size must be $inputNodesSize, but was ${sample.input.size}" }
+    assert(sample.expectedOutput.size == outputLayerSize) { "Expected output layer size must be $outputLayerSize, but was ${sample.expectedOutput.size}" }
+    assert(sample.mask.size == inputNodesSize) { "Mask layer size must be $inputNodesSize, but was ${sample.mask.size}" }
     val activations = mutableListOf<D1Array<Float>>();
 
-    activations.add(mk.ndarray(sample.first))
+    activations.add(mk.ndarray(sample.input))
     for ((a: D2Array<Float>, b: D1Array<Float>) in layers.subList(0, layers.size - 1)) {
       activations.add(((a dot activations.last()) + b).map { activationFunction(it) })
     }
-
-    activations.add(when (predictionType) {
-      PredictionType.LINEAR -> ((layers.last().first dot activations.last()) + layers.last().second).map {
-        activationFunction(it)
-      }
-
-      PredictionType.LOGISTIC -> ((layers.last().first dot activations.last()) + layers.last().second).map {
-        sigmoid(it)
-      }
-
-      PredictionType.SOFTMAX -> softmax(((layers.last().first dot activations.last()) + layers.last().second))
+    val lastNodesMasked = mk.ndarray(sample.mask) * ((layers.last().first dot activations.last()) + layers.last().second)
+    if (predictionType == PredictionType.SOFTMAX || predictionType == PredictionType.LOGISTIC) {
+      sample.mask.forEachIndexed { index, value -> if (value == 0.0f) lastNodesMasked[index] = Float.NEGATIVE_INFINITY }
+    }
+    activations.add(
+      when (predictionType) {
+      PredictionType.LINEAR -> lastNodesMasked.map { activationFunction(it) }
+      PredictionType.LOGISTIC -> lastNodesMasked.map { sigmoid(it) }
+      PredictionType.SOFTMAX -> softmax(lastNodesMasked)
     })
 
     assert(activations.size == layers.size + 1)
@@ -307,7 +326,7 @@ class Lobe {
     val gradientWeights: MutableList<Pair<D2Array<Float>, D1Array<Float>>> =
       mutableListOf<Pair<D2Array<Float>, D1Array<Float>>>()
 
-    val error = activations.last() - mk.ndarray(sample.second)
+    val error = activations.last() - mk.ndarray(sample.expectedOutput)
     var delta: D1Array<Float> = when (predictionType) {
       PredictionType.LINEAR -> error * activations.last().map { activationFunctionDerivative(it) }
       PredictionType.LOGISTIC -> error

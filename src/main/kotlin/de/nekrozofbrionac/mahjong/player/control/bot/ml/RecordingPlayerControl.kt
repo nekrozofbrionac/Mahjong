@@ -48,16 +48,20 @@ class RecordingPlayerControl(
   override fun win(pov: PlayerPov): Boolean {
     val result = actualPlayerControl.win(pov)
     winRecorded = result
-    recordedActions.add(RecordedAction(PlayerControlAction.WIN, pov, floatArrayOf((if (result) 1.0f else 0.0f))));
+    recordedActions.add(RecordedAction(PlayerControlAction.WIN, deepPovCopy(pov), floatArrayOf((if (result) 1.0f else 0.0f))));
     return result
   }
 
   override fun chooseDiscard(pov: PlayerPov): TileType {
     val result = actualPlayerControl.chooseDiscard(pov)
+    if (result !in pov.hand) {
+      throw IllegalStateException("chooseDiscard returned a tile not in hand: $result, hand: ${pov.hand}")
+    }
+    // println("RecordingPlayerControl: chooseDiscard returned ${formatTile(result)}, hand: ${formatTiles(pov.hand.distinct().sorted(), 14, "")}")
     recordedActions.add(
       RecordedAction(
         PlayerControlAction.CHOOSE_DISCARD,
-        pov,
+        deepPovCopy(pov),
         tileTypeToWeightsWithoutFlowers(result)
       )
     );
@@ -69,7 +73,7 @@ class RecordingPlayerControl(
     recordedActions.add(
       RecordedAction(
         PlayerControlAction.KONG_FROM_DRAW,
-        pov,
+        deepPovCopy(pov),
         floatArrayOf(if (result) 1.0f else 0.0f)
       )
     );
@@ -80,7 +84,7 @@ class RecordingPlayerControl(
     val result = actualPlayerControl.kongFromDiscard(pov)
     recordedActions.add(
       RecordedAction(
-        PlayerControlAction.KONG_FROM_DISCARD, pov, floatArrayOf(if (result) 1.0f else 0.0f)
+        PlayerControlAction.KONG_FROM_DISCARD, deepPovCopy(pov), floatArrayOf(if (result) 1.0f else 0.0f)
       )
     );
     return result
@@ -90,7 +94,7 @@ class RecordingPlayerControl(
     val result = actualPlayerControl.pongFromDiscard(pov)
     recordedActions.add(
       RecordedAction(
-        PlayerControlAction.PONG_FROM_DISCARD, pov, floatArrayOf(
+        PlayerControlAction.PONG_FROM_DISCARD, deepPovCopy(pov), floatArrayOf(
           if (result) 1.0f else 0.0f,
         )
       )
@@ -102,14 +106,30 @@ class RecordingPlayerControl(
     val result = actualPlayerControl.chowFromDiscard(pov)
     recordedActions.add(
       RecordedAction(
-        PlayerControlAction.CHOW_FROM_DISCARD, pov, floatArrayOf(
+        PlayerControlAction.CHOW_FROM_DISCARD, deepPovCopy(pov), floatArrayOf(
           if (result == null) 1.0f else 0.0f,
-          if (result != null && result.numeral == pov.discarded.lastOrNull()?.numeral) 1.0f else 0.0f,
-          if (result != null && result.numeral == pov.discarded.lastOrNull()?.numeral?.minus(1)) 1.0f else 0.0f,
           if (result != null && result.numeral == pov.discarded.lastOrNull()?.numeral?.minus(2)) 1.0f else 0.0f,
+          if (result != null && result.numeral == pov.discarded.lastOrNull()?.numeral?.minus(1)) 1.0f else 0.0f,
+          if (result != null && result.numeral == pov.discarded.lastOrNull()?.numeral) 1.0f else 0.0f,
         )
       )
     );
     return result
+  }
+
+  fun deepPovCopy(pov: PlayerPov): PlayerPov {
+    return pov.copy(
+      prevMelds = pov.prevMelds.map { it.toList() }.toList(),
+      nextMelds = pov.nextMelds.map { it.toList() }.toList(),
+      oppoMelds = pov.oppoMelds.map { it.toList() }.toList(),
+      prevFlowers = pov.prevFlowers.toList(),
+      nextFlowers = pov.nextFlowers.toList(),
+      oppoFlowers = pov.oppoFlowers.toList(),
+
+      discarded = pov.discarded.toList(),
+      hand = pov.hand.toList(),
+      melds = pov.melds.map { it.toList() }.toList(),
+      flowers = pov.flowers.toList(),
+    )
   }
 }

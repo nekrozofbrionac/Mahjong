@@ -3,7 +3,6 @@ package de.nekrozofbrionac.mahjong
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.Brain
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.GamblingNeuralNetBot
-import de.nekrozofbrionac.mahjong.player.control.bot.ml.NeuralNetBot
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.PlayerControlAction
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.RecordingBotPlayer
 import de.nekrozofbrionac.mahjong.player.control.bot.ml.RecordingPlayerControl
@@ -18,29 +17,32 @@ fun main() {
   val brain = if (File(brainFile).exists() && File(brainFile).isDirectory) {
     Brain(brainFile)
   } else {
+    val hiddenLayers = listOf(1024, 512, 256, 128)
     Brain(
       brainFile, mapOf(
-        Pair(PlayerControlAction.WIN, listOf()),
-        Pair(PlayerControlAction.CHOOSE_DISCARD, listOf(1000, 500, 200, 100)),
-        Pair(PlayerControlAction.KONG_FROM_DRAW, listOf(500, 200, 100)),
-        Pair(PlayerControlAction.KONG_FROM_DISCARD, listOf(500, 200, 100)),
-        Pair(PlayerControlAction.PONG_FROM_DISCARD, listOf(500, 200, 100)),
-        Pair(PlayerControlAction.CHOW_FROM_DISCARD, listOf(500, 200, 100)),
+        Pair(PlayerControlAction.WIN, listOf(1)),
+        Pair(PlayerControlAction.CHOOSE_DISCARD, hiddenLayers),
+        Pair(PlayerControlAction.KONG_FROM_DRAW, hiddenLayers),
+        Pair(PlayerControlAction.KONG_FROM_DISCARD, hiddenLayers),
+        Pair(PlayerControlAction.PONG_FROM_DISCARD, hiddenLayers),
+        Pair(PlayerControlAction.CHOW_FROM_DISCARD, hiddenLayers),
       )
     )
   }
   println("\n" + brain.smallSummary())
 
-  val wanhubrain = Brain("WAN_HU")
 
   val recordingPlayerControl1 = RecordingPlayerControl(GamblingNeuralNetBot(verbose = false, brain = brain, gamblingFactor = 0.1f))
   val recordingPlayerControl2 = RecordingPlayerControl(GamblingNeuralNetBot(verbose = false, brain = brain, gamblingFactor = 0.2f))
   val recordingPlayerControl3 = RecordingPlayerControl(GamblingNeuralNetBot(verbose = false, brain = brain, gamblingFactor = 0.05f))
   val recordingPlayerControl4 = RecordingPlayerControl(GamblingNeuralNetBot(verbose = false, brain = brain, gamblingFactor = 0.3f))
 
+  val wonGames = mutableMapOf<Int, Int>()
+
   val minBatchSize = 50
 
   var gamesPlayed = 0
+  var totalGamesPlayed = 0
   while (true) {
     if (brain.biggestCacheSize() < minBatchSize) {
       val players = listOf(
@@ -58,6 +60,7 @@ fun main() {
           players.forEach {
             if (it.playerControl.winRecorded) {
               brain.addToTrainingCache(it.playerControl.recording())
+              wonGames[gr.minFaan] = (wonGames[gr.minFaan] ?: 0) + 1
             }
             it.playerControl.reset();
           }
@@ -65,12 +68,23 @@ fun main() {
         },
         verbose = false,
         wind = Random.nextInt(0, 4),
-        minFaan = Random.nextInt(0, 9) // 0 to 8
+        minFaan = listOf(
+          0,
+          1, 1,
+          2, 2, 2,
+          3, 3, 3, 3,
+          4, 4, 4, 4, 4,
+          5, 5, 5, 5, 5, 5,
+          6, 6, 6, 6, 6, 6, 6,
+          7, 7, 7, 7, 7, 7, 7, 7,
+          8, 8, 8, 8, 8, 8, 8, 8, 8
+        ).random()// Random.nextInt(0, 9) // 0 to 8
       );
       game.start();
       gamesPlayed++
+      totalGamesPlayed++
 
-      print("\r${brain.biggestCacheSize()} (${brain.cacheSize} total) samples collected from $gamesPlayed games                                         ")
+      print("\r${brain.biggestCacheSize()} (${brain.cacheSize} total) samples collected from $gamesPlayed games ($totalGamesPlayed total) (${wonGames.entries.sortedBy { (k, v) -> k }.joinToString(", ") { "(${it.key}: ${it.value})" }})  ")
       continue
     }
     gamesPlayed = 0
