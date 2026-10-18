@@ -1,5 +1,10 @@
 package de.nekrozofbrionac.mahjong.board;
 
+/**
+ * We guarantee that the 8 flower tiles are always at the end.
+ */
+const val NUMBER_OF_FLOWERS = 8
+val NUMBER_OF_TILES_WITHOUT_FLOWERS = TileType.entries.size - NUMBER_OF_FLOWERS
 enum class TileType(
   val count: Int,
   val shortHand: String,

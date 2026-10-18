@@ -3,6 +3,7 @@ package de.nekrozofbrionac.mahjong.player.control.bot
 import de.nekrozofbrionac.mahjong.board.SimpleBoard
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.combinations
+import de.nekrozofbrionac.mahjong.determineChowPossibilities
 import de.nekrozofbrionac.mahjong.determineHiddenTiles
 import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.PlayerPov
@@ -18,7 +19,6 @@ val mahjongSet = SimpleBoard().wall.filter { !it.isFlower() }.toList()
 
 class NoIdeaAboutHandsBot(
   val iterations: Int = 10000,
-  val minFaan: Int = 3,
   val verbose: Boolean = true,
 ) : PlayerControl {
 
@@ -32,7 +32,7 @@ class NoIdeaAboutHandsBot(
     }
 
     say("I have to discard...")
-    val searchOutcome = search(iterations, pov, minFaan)
+    val searchOutcome = search(iterations, pov, pov.minFaan)
     say("Thought for ${searchOutcome.actualIterations} and came up with:")
     searchOutcome.tileProbabilities.forEachIndexed { i, tp ->
       say("${i.toString().padStart(2)}. : ${formatTiles(listOf(tp.first), 1, "")} ${tp.second}")
@@ -46,11 +46,106 @@ class NoIdeaAboutHandsBot(
   }
 
   override fun kongFromDraw(pov: PlayerPov): Boolean {
-    return true
+    val kongedTile = pov.hand.last()
+    val formattedKong = formatTiles(listOf(kongedTile, kongedTile, kongedTile, kongedTile), 4, "")
+
+    if (verbose) {
+      printPov(pov)
+    }
+    say("Kong with $formattedKong ?")
+    say("Thinking about not konging...")
+    val searchNoKong = search(iterations, pov, pov.minFaan)
+    say("... ${searchNoKong.predictedWins} of ${searchNoKong.actualIterations} winnable futures. Avg depth: ${searchNoKong.averageDepth}.")
+
+    val copyOfHand = pov.hand.toMutableList()
+    val copyOfMelds = pov.melds.toMutableList()
+
+    repeat(4) { copyOfHand.remove(kongedTile) }
+    copyOfMelds.add(listOf(kongedTile, kongedTile, kongedTile, kongedTile))
+    val povAfterKong = pov.copy(
+      hand = copyOfHand,
+      melds = copyOfMelds,
+    )
+
+    say("Thinking about $formattedKong...")
+    val searchWithKong = search(iterations, povAfterKong, pov.minFaan)
+    say("... ${searchWithKong.predictedWins} of ${searchWithKong.actualIterations} winnable futures. Avg depth: ${searchWithKong.averageDepth}. (-1) ")
+
+    val noKongTerm = pathCost(
+      searchNoKong.predictedWins.toDouble() / searchNoKong.actualIterations.toDouble(),
+      searchNoKong.averageDepth
+    )
+    // -1 because of getting to draw 1 more tile, 0.5 to weight in drawing the card right now
+    val withKongTerm = pathCost(
+      searchWithKong.predictedWins.toDouble() / searchWithKong.actualIterations.toDouble(),
+      searchWithKong.averageDepth - 1.0 - 0.5
+    )
+
+    val output = if (withKongTerm.isNaN() && noKongTerm.isNaN()) {
+      true
+    } else if (withKongTerm.isNaN()) {
+      false
+    } else if (noKongTerm.isNaN()) {
+      true
+    } else {
+      withKongTerm <= noKongTerm
+    }
+    say("I will go with ${if (output) formattedKong else "no kong"}.")
+    say("PathCosts: (No Kong: $noKongTerm), ($formattedKong : $withKongTerm).")
+    return output
   }
 
   override fun kongFromDiscard(pov: PlayerPov): Boolean {
-    return true
+    val kongedTile = pov.discarded.last()
+    val formattedKong = formatTiles(listOf(kongedTile, kongedTile, kongedTile, kongedTile), 4, "")
+
+    if (verbose) {
+      printPov(pov)
+    }
+    say("Kong with $formattedKong ?")
+    say("Thinking about not konging...")
+    val searchNoKong = search(iterations, pov, pov.minFaan)
+    say("... ${searchNoKong.predictedWins} of ${searchNoKong.actualIterations} winnable futures. Avg depth: ${searchNoKong.averageDepth} (-1).")
+
+    val copyOfHand = pov.hand.toMutableList()
+    val copyOfMelds = pov.melds.toMutableList()
+
+    copyOfHand.add(kongedTile)
+    repeat(4) { copyOfHand.remove(kongedTile) }
+    copyOfMelds.add(listOf(kongedTile, kongedTile, kongedTile, kongedTile))
+    val povAfterKong = pov.copy(
+      hand = copyOfHand,
+      melds = copyOfMelds,
+      discarded = pov.discarded.dropLast(1),
+    )
+
+    say("Thinking about $formattedKong...")
+    val searchWithKong = search(iterations, povAfterKong, pov.minFaan)
+    say("... ${searchWithKong.predictedWins} of ${searchWithKong.actualIterations} winnable futures. Avg depth: ${searchWithKong.averageDepth}.")
+
+    // -1 because of needing one tile more for 14
+    val noKongTerm = pathCost(
+      searchNoKong.predictedWins.toDouble() / searchNoKong.actualIterations.toDouble(),
+      searchNoKong.averageDepth - 1.0
+    )
+    // we receive an extra tile, 0.5 for the fact that we are drawing the tile right now
+    val withKongTerm = pathCost(
+      searchWithKong.predictedWins.toDouble() / searchWithKong.actualIterations.toDouble(),
+      searchWithKong.averageDepth - 1.0 - 0.5
+    )
+
+    val output = if (withKongTerm.isNaN() && noKongTerm.isNaN()) {
+      true
+    } else if (withKongTerm.isNaN()) {
+      false
+    } else if (noKongTerm.isNaN()) {
+      true
+    } else {
+      withKongTerm <= noKongTerm
+    }
+    say("I will go with ${if (output) formattedKong else "no kong"}.")
+    say("PathCosts: (No Kong: $noKongTerm), ($formattedKong : $withKongTerm).")
+    return output
   }
 
   override fun pongFromDiscard(pov: PlayerPov): Boolean {
@@ -62,7 +157,7 @@ class NoIdeaAboutHandsBot(
     }
     say("Pong with $formattedPong ?")
     say("Thinking about not ponging...")
-    val searchNoPong = search(iterations, pov, minFaan)
+    val searchNoPong = search(iterations, pov, pov.minFaan)
     say("... ${searchNoPong.predictedWins} of ${searchNoPong.actualIterations} winnable futures. Avg depth: ${searchNoPong.averageDepth} (-1).")
 
     val copyOfHand = pov.hand.toMutableList()
@@ -78,17 +173,18 @@ class NoIdeaAboutHandsBot(
     )
 
     say("Thinking about $formattedPong...")
-    val searchWithPong = search(iterations, povAfterPong, minFaan)
+    val searchWithPong = search(iterations, povAfterPong, pov.minFaan)
     say("... ${searchWithPong.predictedWins} of ${searchWithPong.actualIterations} winnable futures. Avg depth: ${searchWithPong.averageDepth}.")
 
     // -1 because of needing one tile more for 14
     val noPongTerm = pathCost(
       searchNoPong.predictedWins.toDouble() / searchNoPong.actualIterations.toDouble(),
-      searchNoPong.averageDepth - 1
+      searchNoPong.averageDepth - 1.0
     )
+    // to weigh in that we are stealing a turn
     val withPongTerm = pathCost(
       searchWithPong.predictedWins.toDouble() / searchWithPong.actualIterations.toDouble(),
-      searchWithPong.averageDepth
+      searchWithPong.averageDepth - 0.2
     )
 
     val output = if (withPongTerm.isNaN() && noPongTerm.isNaN()) {
@@ -116,7 +212,7 @@ class NoIdeaAboutHandsBot(
     say("Chow with ${formattedChows.values.joinToString(", ")} ?")
     // todo probably not perfect, i am forgetting kongs, but so did i within search
     say("Thinking about not chowing...")
-    val searchNoChow = search(iterations, pov, minFaan) // keep in mind that this starts with 13 tiles instead of 14
+    val searchNoChow = search(iterations, pov, pov.minFaan) // keep in mind that this starts with 13 tiles instead of 14
     say("... ${searchNoChow.predictedWins} of ${searchNoChow.actualIterations} winnable futures. Avg depth: ${searchNoChow.averageDepth} (-1).")
 
     costMap[null] =
@@ -137,7 +233,7 @@ class NoIdeaAboutHandsBot(
         discarded = pov.discarded.dropLast(1)
       )
       say("Thinking about ${formattedChows[chow]} ...")
-      val r = search(iterations, hypotheticalPovAfterChow, minFaan)
+      val r = search(iterations, hypotheticalPovAfterChow, pov.minFaan)
       costMap[chow] = pathCost(r.predictedWins.toDouble() / r.actualIterations.toDouble(), r.averageDepth)
       say("... ${r.predictedWins} of ${r.actualIterations} winnable futures. Avg depth: ${r.averageDepth}.")
     }
@@ -294,91 +390,154 @@ fun findStandardWin(
   possibleEyes.forEach { eyeTile ->
     // remove the eye first
     val mutableRestHand = sortedHand.toMutableList()
-    val mutableRestMelds: MutableList<List<TileType>> = mutableListOf()
     repeat(2) { mutableRestHand.remove(eyeTile) }
-    mutableRestMelds.add(listOf(eyeTile, eyeTile))
+    val eye = listOf(eyeTile, eyeTile)
 
-    // try to find concealed kongs that are a pong and part of a chow
-    while (true) {
-      val firstPossibleKong = mutableRestHand.firstOrNull() { st -> mutableRestHand.count { st == it } >= 4 }
-        ?: break;
-
-      repeat(3) { mutableRestHand.remove(firstPossibleKong) }
-      mutableRestMelds.add(listOf(firstPossibleKong, firstPossibleKong, firstPossibleKong))
-    }
-
-    // since we are working with more tiles than a hand, lets count both chows first and pong first
-    val mutableChowFirstMelds = mutableRestMelds.toMutableList()
-    val mutableChowFirstRestHand = mutableRestHand.toMutableList()
-    putAllChowsIntoMelds(mutableChowFirstMelds, mutableChowFirstRestHand)
-    putAllPongsIntoMelds(mutableChowFirstMelds, mutableChowFirstRestHand)
-    val chowResult = evaluateMelds(
-      eyeTile,
-      mutableChowFirstMelds,
+    val result = evaluateAfterRemovingKongs(
+      eye,
+      mutableRestHand,
       fixedMelds,
-      mutableChowFirstRestHand,
-      prevailingWind,
       playerWind,
+      prevailingWind,
       minimumFaanRequired
     )
-    if (chowResult != null) {
-      return chowResult
+    if (result != null) {
+      return Pair(result.first, result.second)
     }
 
-    val mutablePongFirstMelds = mutableRestMelds.toMutableList()
-    val mutablePongFirstRestHand = mutableRestHand.toMutableList()
-    putAllPongsIntoMelds(mutablePongFirstMelds, mutablePongFirstRestHand)
-    putAllChowsIntoMelds(mutablePongFirstMelds, mutablePongFirstRestHand)
-    val pongResult = evaluateMelds(
-      eyeTile,
-      mutablePongFirstMelds,
-      fixedMelds,
-      mutablePongFirstRestHand,
-      prevailingWind,
-      playerWind,
-      minimumFaanRequired
-    )
-    if (pongResult != null) {
-      return pongResult
+    /*
+    val kongTiles = mutableRestHand.distinct().filter { st -> mutableRestHand.count { st == it } >= 4 }
+
+    repeat(min(kongTiles.size, 4 - fixedMelds.size)) { numberOfKongsToCheck ->
+      val kongCombinations = kongTiles.combinations(numberOfKongsToCheck)
+      kongCombinations.forEach { kongTiles ->
+        val mutableKongRestHand = mutableRestHand.toMutableList()
+
+        val kongsToAdd = mutableListOf<List<TileType>>()
+        kongTiles.forEach { kongTile ->
+          repeat(4) { mutableKongRestHand.remove(kongTile) }
+          kongsToAdd.add(listOf(kongTile, kongTile, kongTile, kongTile))
+        }
+
+        val result = evaluateAfterRemovingKongs(
+          mutableKongRestHand,
+          listOf(eye) + fixedMelds + kongsToAdd,
+          playerWind,
+          prevailingWind,
+          minimumFaanRequired
+        )
+        if (result != null) {
+          return Pair(result.first, result.second)
+        }
+      }
     }
+    */
+  }
+  return null;
+}
+
+fun evaluateAfterRemovingKongs(
+  eye: List<TileType>,
+  mutableRestHand: MutableList<TileType>,
+  eyeLessFixedMelds: List<List<TileType>>,
+  playerWind: Turn,
+  prevailingWind: Turn,
+  minimumFaanRequired: Int
+): Pair<List<List<TileType>>, List<TileType>>? {
+  val meldProposals = mutableListOf<List<TileType>>()
+
+  if (eyeLessFixedMelds.isEmpty()) {
+    // test for special hands
+    if (isThirteenOrphans(eye + mutableRestHand)) {
+      THIRTEEN_ORPHANS.forEach { mutableRestHand.remove(it) }
+      mutableRestHand.remove(eye[0]);
+      val output = Pair(listOf(THIRTEEN_ORPHANS + eye[0]), mutableRestHand);
+      println("HOLY SHIT THIRTEEN ORPHANS ${formatTiles(output.first[0], 14, "")}    ${formatTiles(output.second, 140, "")}")
+      return output;
+    } else if (isNinePorts(eye + mutableRestHand)) {
+      val ninePort = generateNinePorts(eye[0]);
+      ninePort.forEach { mutableRestHand.remove(it) }
+      mutableRestHand.remove(eye[0])
+
+      val output = Pair(listOf(ninePort + eye[0]), mutableRestHand);
+      println("HOLY SHIT NINE PORTS ${formatTiles(output.first[0], 14, "")}    ${formatTiles(output.second, 140, "")}")
+      return output
+    }
+
+  }
+
+  // try to find concealed kongs that are a pong and part of a chow
+  while (true) {
+    val firstPossibleKong = mutableRestHand.firstOrNull { st -> mutableRestHand.count { st == it } >= 4 }
+      ?: break;
+
+    repeat(3) { mutableRestHand.remove(firstPossibleKong) }
+    meldProposals.add(listOf(firstPossibleKong, firstPossibleKong, firstPossibleKong))
+  }
+
+  // since we are working with more tiles than a hand, lets count both chows first and pong first
+  val mutableChowFirstMelds = meldProposals.toMutableList()
+  val mutableChowFirstRestHand = mutableRestHand.toMutableList()
+  putAllChowsIntoMelds(mutableChowFirstMelds, mutableChowFirstRestHand)
+  putAllPongsIntoMelds(mutableChowFirstMelds, mutableChowFirstRestHand)
+  val chowResult = evaluateMelds(
+    eye,
+    mutableChowFirstMelds,
+    eyeLessFixedMelds,
+    mutableChowFirstRestHand,
+    prevailingWind,
+    playerWind,
+    minimumFaanRequired
+  )
+  if (chowResult != null) {
+    return chowResult
+  }
+
+  val mutablePongFirstMelds = meldProposals.toMutableList()
+  val mutablePongFirstRestHand = mutableRestHand.toMutableList()
+  putAllPongsIntoMelds(mutablePongFirstMelds, mutablePongFirstRestHand)
+  putAllChowsIntoMelds(mutablePongFirstMelds, mutablePongFirstRestHand)
+  val pongResult = evaluateMelds(
+    eye,
+    mutablePongFirstMelds,
+    eyeLessFixedMelds,
+    mutablePongFirstRestHand,
+    prevailingWind,
+    playerWind,
+    minimumFaanRequired
+  )
+  if (pongResult != null) {
+    return pongResult
   }
   return null;
 }
 
 fun evaluateMelds(
-  eyeTile: TileType,
-  mutableRestMelds: MutableList<List<TileType>>,
-  fixedMelds: List<List<TileType>>,
-  mutableRestHand: MutableList<TileType>,
+  eye: List<TileType>,
+  meldProposals: List<List<TileType>>,
+  fixedMeldsWithoutEye: List<List<TileType>>,
+  restHand: List<TileType>,
   prevailingWind: Turn,
   playerWind: Turn,
   minimumFaanRequired: Int,
 ): Pair<List<List<TileType>>, List<TileType>>? {
-  if (mutableRestMelds.size + fixedMelds.size >= 5) { // 1 eye and maybe more than 4 melds, we need to get to more FAAN!
-    // there is only one eye
-    val eyelessMelds = mutableRestMelds.filter { it.size > 2 }.toMutableList();
-    eyelessMelds.combinations(4 - (fixedMelds.size))
-      .forEach { meldCombination ->
-        val recombinedEyeMelds = meldCombination.toMutableList()
-        recombinedEyeMelds.add(listOf(eyeTile, eyeTile))
-        recombinedEyeMelds.addAll(fixedMelds)
-
-        val result = fastEvaluateStdHand(
-          meldsIncludingEye = recombinedEyeMelds,
-          prevWind = prevailingWind,
-          playerWind = playerWind,
-        )
-
-        if (result >= minimumFaanRequired) {
-          meldCombination.forEach { m -> mutableRestMelds.remove(m) }
-          mutableRestMelds.remove(listOf(eyeTile, eyeTile))
-
-          mutableRestHand.addAll(mutableRestMelds.flatten())
-          return Pair(recombinedEyeMelds, mutableRestHand)
-        }
-      }
+  if (meldProposals.size + fixedMeldsWithoutEye.size < 4) { // 1 eye and maybe more than 4 melds, we need to get to more FAAN!
+    return null;
   }
-  return null;
+  meldProposals.combinations(4 - (fixedMeldsWithoutEye.size)).forEach { meldCombination ->
+    val result = fastEvaluateStdHand(
+      eye = eye,
+      remainingMelds = meldCombination + fixedMeldsWithoutEye,
+      prevWind = prevailingWind,
+      playerWind = playerWind,
+    )
+    if (result >= minimumFaanRequired) {
+      val mutableRestMelds = meldProposals.toMutableList()
+      meldCombination.forEach { m -> mutableRestMelds.remove(m) }
+      return Pair(listOf(eye) + fixedMeldsWithoutEye + meldCombination, restHand + mutableRestMelds.flatten())
+    }
+  }
+  return null // nothing of note found.
 }
 
 /**
@@ -499,18 +658,16 @@ class RandomTileSequenceGenerator(
 }
 
 fun fastEvaluateStdHand(
-  meldsIncludingEye: List<List<TileType>>,
+  eye: List<TileType>,
+  remainingMelds: List<List<TileType>>,
   prevWind: Turn,
   playerWind: Turn,
 ): Int {
-  val eye = meldsIncludingEye.find { it.size == 2 }
-    ?: throw UnsupportedOperationException("How do we have an average hand from determineAverageWin with no eye")
-  val remainingMelds = meldsIncludingEye.filter { it.size > 2 }
 
   var faan = 0;
   var noDragonBonus = false; // no dragon pong points for small/great dragon
 
-  if (meldsIncludingEye.all { isSameSuit(it, null) }) { // all honours
+  if (isSameSuit(eye, null) && remainingMelds.all { isSameSuit(it, null) }) { // all honours
     faan += 7
   } else if (isDragonEyePongKong(eye) && remainingMelds.count { isDragonEyePongKong(it) } == 2) { // small dragon
     faan += 5
@@ -522,7 +679,7 @@ fun fastEvaluateStdHand(
     faan += 5
   } else if (remainingMelds.count { isWindEyePongKong(it) } == 4) { // great wind
     faan += 10 // includes all pongs later
-  } else if (meldsIncludingEye.all { isTerminalEyePongKong(it) }) { // all Terminals
+  } else if (isTerminalEyePongKong(eye) && remainingMelds.all { isTerminalEyePongKong(it) }) { // all Terminals
     faan += 7
   }
 
@@ -535,12 +692,18 @@ fun fastEvaluateStdHand(
     faan += 3
   }
   // Same Suit (without honour)
-  val firstActualSuit = meldsIncludingEye.firstOrNull { it.isNotEmpty() && null != it[0].suit }?.get(0)?.suit
-  if (null != firstActualSuit && meldsIncludingEye.all { isSameSuit(it, firstActualSuit) }) {
+  val firstActualSuit = eye[0].suit ?: remainingMelds.firstOrNull { it.isNotEmpty() && null != it[0].suit }
+    ?.get(0)?.suit// this is a check for all same suits, so eye is enough
+  if (null != firstActualSuit && isSameSuit(eye, firstActualSuit) && remainingMelds.all {
+      isSameSuit(
+        it,
+        firstActualSuit
+      )
+    }) {
     faan += 7
   }
-  // Mixed one suit
-  if (null != firstActualSuit && meldsIncludingEye.all { isSameSuit(it, firstActualSuit) || isSameSuit(it, null) }) {
+  // Mixed one suit, check for the suit of eye unnecessary
+  if (null != firstActualSuit && remainingMelds.all { isSameSuit(it, firstActualSuit) || isSameSuit(it, null) }) {
     faan += 3
   }
 

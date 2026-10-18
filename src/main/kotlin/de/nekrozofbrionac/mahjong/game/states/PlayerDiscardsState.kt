@@ -1,7 +1,6 @@
 package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.mahjong.hands.determineAverageWin
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.game.Turn
 import de.nekrozofbrionac.mahjong.hands.evaluateHand
@@ -16,6 +15,9 @@ class PlayerDiscardsState : GameState {
     // Priority: Win, Kong, Pong, Chow
 
     for (winIndex in 0..3) {
+      if (winIndex == game.turnPlayer) {
+        continue;
+      }
       val susWinner = game.getPlayerByIndex(winIndex)
 
       // find out if winning hand?
@@ -41,6 +43,9 @@ class PlayerDiscardsState : GameState {
 
 
     for (kongIndex in 0..3) {
+      if (kongIndex == game.turnPlayer) {
+        continue;
+      }
       val kongPlayer = game.getPlayerByIndex(kongIndex);
       if (kongPlayer.isKongAvailableInHand(discardedTile)) {
         if (kongPlayer.playerControl.kongFromDiscard(game.compilePlayerPov(kongIndex))) {
@@ -57,6 +62,9 @@ class PlayerDiscardsState : GameState {
     }
 
     for (pongIndex in 0..3) {
+      if (pongIndex == game.turnPlayer) {
+        continue;
+      }
       val pongPlayer = game.getPlayerByIndex(pongIndex);
       if (pongPlayer.isPongAvailable(discardedTile)) {
         if (pongPlayer.playerControl.pongFromDiscard(game.compilePlayerPov(pongIndex))) {

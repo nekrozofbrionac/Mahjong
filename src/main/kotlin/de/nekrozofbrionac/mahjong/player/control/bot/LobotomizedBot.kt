@@ -2,6 +2,7 @@ package de.nekrozofbrionac.mahjong.player.control.bot
 
 import de.nekrozofbrionac.mahjong.game.PlayerPov
 import de.nekrozofbrionac.mahjong.board.TileType
+import de.nekrozofbrionac.mahjong.determineChowPossibilities
 import de.nekrozofbrionac.mahjong.player.control.PlayerControl
 import de.nekrozofbrionac.mahjong.printPov
 
@@ -13,8 +14,8 @@ class LobotomizedBot(
     return true;
   }
 
-  override fun chooseDiscard(p: PlayerPov): TileType {
-    return p.hand.random();
+  override fun chooseDiscard(pov: PlayerPov): TileType {
+    return pov.hand.random();
   }
 
   override fun kongFromDraw(pov: PlayerPov): Boolean {

@@ -1,7 +1,7 @@
 package de.nekrozofbrionac.mahjong.game
 
 import GameState
-import Player
+import de.nekrozofbrionac.mahjong.player.Player
 import de.nekrozofbrionac.mahjong.board.SimpleBoard
 import de.nekrozofbrionac.mahjong.formatTiles
 import de.nekrozofbrionac.mahjong.game.states.InitialState
@@ -182,6 +182,7 @@ class Game(
   }
 
   fun terminate(gameReport: GameReport) {
+    (0..3).forEach { getPlayerByIndex(it).playerControl.endGame() }
     if (winnerEval == null || winner == null) {
       onTermination(gameReport)
     } else {

@@ -125,7 +125,7 @@ fun proposeHands(
       val availableTiles = (hand + remainingTiles).toMutableList()
 
       if (proposedHand.all { tile -> availableTiles.remove(tile) }) {
-        val eval = fastEvaluateStdHand(listOf(eye) + melds, prevWind, playerWind)
+        val eval = fastEvaluateStdHand(eye, melds, prevWind, playerWind)
         if (eval >= minFaan) {
           output.add(proposedHand)
         }

@@ -1,0 +1,111 @@
+package de.nekrozofbrionac.mahjong.player.control.bot.ml
+
+import de.nekrozofbrionac.mahjong.board.TileType
+import de.nekrozofbrionac.mahjong.determineChowPossibilities
+import de.nekrozofbrionac.mahjong.formatTile
+import de.nekrozofbrionac.mahjong.formatTiles
+import de.nekrozofbrionac.mahjong.game.PlayerPov
+import de.nekrozofbrionac.mahjong.player.control.PlayerControl
+import de.nekrozofbrionac.mahjong.printPov
+import org.apache.commons.io.output.ThresholdingOutputStream
+
+class NeuralNetBot(
+  val verbose: Boolean = false,
+  val brain: Brain
+) : PlayerControl {
+
+  private fun printPovIfVerbose(pov: PlayerPov) {
+    if (verbose) {
+      printPov(pov)
+    }
+  }
+
+  private fun printlnIfVerbose(string: String) {
+    if (verbose) {
+      println(string)
+    }
+  }
+
+  override fun win(pov: PlayerPov): Boolean {
+    val thought = brain.thinkAbout(PlayerControlAction.WIN, pov)
+    printPovIfVerbose(pov)
+    printlnIfVerbose("NeuralNetBot action: win")
+    printlnIfVerbose("NeuralNetBot (${pov.playerSeat}) says: ${thought.contentToString()}")
+    printlnIfVerbose("Winning anyway, anything else is boring.")
+    return true
+  }
+
+  fun formatTileAndThought(tile: TileType, thought: FloatArray): String {
+    return "${formatTile(tile)} ${"%.3f".format(thought[tile.ordinal])}"
+  }
+
+  override fun chooseDiscard(pov: PlayerPov): TileType {
+    val thought = brain.thinkAbout(PlayerControlAction.CHOOSE_DISCARD, pov)
+    val bestTile = pov.hand.distinct().sortedByDescending { tile -> thought[tile.ordinal] }
+
+    printPovIfVerbose(pov)
+    printlnIfVerbose("NeuralNetBot action: chooseDiscard")
+    printlnIfVerbose("The nearest existing selection is  ${bestTile.map { formatTileAndThought(it, thought) }}")
+
+    return bestTile[0]
+  }
+
+  override fun kongFromDraw(pov: PlayerPov): Boolean {
+    val thought = brain.thinkAbout(PlayerControlAction.KONG_FROM_DRAW, pov)
+    printPovIfVerbose(pov)
+    printlnIfVerbose("NeuralNetBot action: kongFromDraw")
+    printlnIfVerbose("NeuralNetBot (${pov.playerSeat}) says: ${thought.contentToString()}")
+    return thought[0] >= 0.5f
+  }
+
+  override fun kongFromDiscard(pov: PlayerPov): Boolean {
+    val thought = brain.thinkAbout(PlayerControlAction.KONG_FROM_DISCARD, pov)
+    printPovIfVerbose(pov)
+    printlnIfVerbose("NeuralNetBot action: kongFromDiscard")
+    printlnIfVerbose("NeuralNetBot says: ${thought.contentToString()}")
+    return thought[0] >= 0.5f
+  }
+
+  override fun pongFromDiscard(pov: PlayerPov): Boolean {
+    val thought = brain.thinkAbout(PlayerControlAction.PONG_FROM_DISCARD, pov)
+    printPovIfVerbose(pov)
+    printlnIfVerbose("NeuralNetBot action: pongFromDiscard")
+    printlnIfVerbose("NeuralNetBot says: ${thought.contentToString()}")
+    return thought[0] >= 0.5f
+  }
+
+  override fun chowFromDiscard(pov: PlayerPov): TileType? {
+    val thought = brain.thinkAbout(PlayerControlAction.CHOW_FROM_DISCARD, pov)
+    printPovIfVerbose(pov)
+    printlnIfVerbose("NeuralNetBot action: chowFromDiscard")
+    printlnIfVerbose("NeuralNetBot says: ${thought.contentToString()}")
+
+    val discardedTile = pov.discarded.lastOrNull() ?: return null
+    val possibleChows = determineChowPossibilities(pov.hand, discardedTile)
+    if (possibleChows.isEmpty()) {
+      throw IllegalStateException("No possible chows found, but game suggested to chow.")
+    }
+
+    printlnIfVerbose("NeuralNetBot not chowing at all score: ${thought[0]}")
+    val chowScoresForPossibleChows = possibleChows.map{ chow ->
+      if (chow[0].numeral == discardedTile.numeral?.minus(2)) {
+        printlnIfVerbose("NeuralNetBot chow score: ${thought[1]} ${ formatTiles(chow, 3, "")}")
+        Pair(thought[1], chow[0]) // score for chow starting with the tile two below the discarded tile
+      } else if (chow[0].numeral == discardedTile.numeral?.minus(1)) {
+        printlnIfVerbose("NeuralNetBot chow score: ${thought[2]} ${ formatTiles(chow, 3, "")}")
+        Pair(thought[2], chow[0]) // score for chow starting with the tile one below the discarded tile
+      } else if (chow[0].numeral == discardedTile.numeral) {
+        printlnIfVerbose("NeuralNetBot chow score: ${thought[3]} ${ formatTiles(chow, 3, "")}")
+        Pair(thought[3], chow[0]) // score for chow starting with the discarded tile itself
+      } else {
+        Pair (Float.NEGATIVE_INFINITY, chow[0])
+      }
+    }
+
+    val chosenChow = chowScoresForPossibleChows.maxBy { it.first }
+    if (thought[0] >= chosenChow.first) {
+      return null
+    }
+    return chosenChow.second
+  }
+}

@@ -1,3 +1,5 @@
+package de.nekrozofbrionac.mahjong.player
+
 import de.nekrozofbrionac.mahjong.board.TileType
 import de.nekrozofbrionac.mahjong.player.control.PlayerControl
 
