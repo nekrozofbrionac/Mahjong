@@ -290,23 +290,23 @@ fun isTerminalEyePongKong(meld: List<TileType>): Boolean {
       meld.all { meld[0] == it }
 }
 
+val THIRTEEN_ORPHANS = listOf(
+  TileType.BAMBOO_1,
+  TileType.BAMBOO_9,
+  TileType.STONE_1,
+  TileType.STONE_9,
+  TileType.CHARACTER_1,
+  TileType.CHARACTER_9,
+  TileType.WIND_EAST,
+  TileType.WIND_SOUTH,
+  TileType.WIND_WEST,
+  TileType.WIND_NORTH,
+  TileType.DRAGON_RED,
+  TileType.DRAGON_GREEN,
+  TileType.DRAGON_WHITE,
+)
 fun isThirteenOrphans(hand: List<TileType>): Boolean {
-  val thirteenOrphans = listOf(
-    TileType.BAMBOO_1,
-    TileType.BAMBOO_9,
-    TileType.STONE_1,
-    TileType.STONE_9,
-    TileType.CHARACTER_1,
-    TileType.CHARACTER_9,
-    TileType.WIND_EAST,
-    TileType.WIND_SOUTH,
-    TileType.WIND_WEST,
-    TileType.WIND_NORTH,
-    TileType.DRAGON_RED,
-    TileType.DRAGON_GREEN,
-    TileType.DRAGON_WHITE,
-  )
-  return hand.containsAll(thirteenOrphans) && hand.all { thirteenOrphans.contains(it) }
+  return hand.containsAll(THIRTEEN_ORPHANS) && hand.all { THIRTEEN_ORPHANS.contains(it) }
 }
 
 fun isNinePorts(hand: List<TileType>): Boolean {
@@ -321,4 +321,24 @@ fun isNinePorts(hand: List<TileType>): Boolean {
       (hand.count { it.numeral == 7 } >= 1) &&
       (hand.count { it.numeral == 8 } >= 1) &&
       (hand.count { it.numeral == 9 } >= 3)
+}
+
+fun generateNinePorts(tile: TileType): List<TileType> {
+  val suit = tile.suit ?: return emptyList()
+
+  return listOf(
+    TileType.entries.find { it.suit == suit && it.numeral == 1 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 1 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 1 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 2 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 3 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 4 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 5 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 6 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 7 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 8 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 9 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 9 }!!,
+    TileType.entries.find { it.suit == suit && it.numeral == 9 }!!,
+  )
 }

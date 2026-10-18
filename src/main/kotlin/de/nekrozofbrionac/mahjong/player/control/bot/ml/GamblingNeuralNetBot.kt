@@ -12,9 +12,8 @@ import kotlin.random.Random
 class GamblingNeuralNetBot(
   val verbose: Boolean = false,
   val brain: Brain,
-  val gamblingFactor: Float = 0.1f
+  val gamblingFactors: Map<PlayerControlAction, Float>
 ) : PlayerControl {
-
   private fun printPovIfVerbose(pov: PlayerPov) {
     if (verbose) {
       printPov(pov)
@@ -41,6 +40,7 @@ class GamblingNeuralNetBot(
   }
 
   override fun chooseDiscard(pov: PlayerPov): TileType {
+    val gamblingFactor = gamblingFactors[PlayerControlAction.CHOOSE_DISCARD] ?: 0.0f
     val thought = brain.thinkAbout(PlayerControlAction.CHOOSE_DISCARD, pov)
     val rawOdds = pov.hand.distinct().map { tile -> Pair(tile, thought[tile.ordinal] + gamblingFactor) }
     printPovIfVerbose(pov)
@@ -62,6 +62,7 @@ class GamblingNeuralNetBot(
   }
 
   override fun kongFromDraw(pov: PlayerPov): Boolean {
+    val gamblingFactor = gamblingFactors[PlayerControlAction.KONG_FROM_DRAW] ?: 0.0f
     val thought = brain.thinkAbout(PlayerControlAction.KONG_FROM_DRAW, pov)
     printPovIfVerbose(pov)
     printlnIfVerbose("GamblingNeuralNetBot action: kongFromDraw")
@@ -72,6 +73,7 @@ class GamblingNeuralNetBot(
   }
 
   override fun kongFromDiscard(pov: PlayerPov): Boolean {
+    val gamblingFactor = gamblingFactors[PlayerControlAction.KONG_FROM_DISCARD] ?: 0.0f
     val thought = brain.thinkAbout(PlayerControlAction.KONG_FROM_DISCARD, pov)
     printPovIfVerbose(pov)
     printlnIfVerbose("GamblingNeuralNetBot action: kongFromDiscard")
@@ -82,6 +84,7 @@ class GamblingNeuralNetBot(
   }
 
   override fun pongFromDiscard(pov: PlayerPov): Boolean {
+    val gamblingFactor = gamblingFactors[PlayerControlAction.PONG_FROM_DISCARD] ?: 0.0f
     val thought = brain.thinkAbout(PlayerControlAction.PONG_FROM_DISCARD, pov)
     printPovIfVerbose(pov)
     printlnIfVerbose("GamblingNeuralNetBot action: pongFromDiscard")
@@ -92,6 +95,7 @@ class GamblingNeuralNetBot(
   }
 
   override fun chowFromDiscard(pov: PlayerPov): TileType? {
+    val gamblingFactor = gamblingFactors[PlayerControlAction.CHOW_FROM_DISCARD] ?: 0.0f
     val thought = brain.thinkAbout(PlayerControlAction.CHOW_FROM_DISCARD, pov)
     printPovIfVerbose(pov)
     printlnIfVerbose("GamblingNeuralNetBot action: chowFromDiscard")

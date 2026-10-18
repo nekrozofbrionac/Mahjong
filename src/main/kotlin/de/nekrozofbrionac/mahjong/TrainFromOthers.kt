@@ -71,20 +71,18 @@ fun main() {
     .map { Thread(gameSimulation { brain.addToTrainingCache(it) }) }
     .forEach { it.start() }
 
-  val minBatchSize = 50
-
   var waitDotCounter = 0
   while (true) {
-    if (brain.biggestCacheSize() < minBatchSize) {
+    if (!brain.minBatchSizeSatisfied()) {
       Thread.sleep(2000)
-      print("\r${brain.biggestCacheSize()} (${brain.cacheSize} total) samples collected.${".".repeat(waitDotCounter % 5)}                                       ")
+      print("\r${brain.cacheSize} total samples collected.${".".repeat(waitDotCounter % 5)}                                       ")
       waitDotCounter++
       continue
     }
     waitDotCounter = 0
 
     print("\rTraining on ${brain.cacheSize} samples                                                                                                           ")
-    brain.trainOnCache(minBatchSize)
+    brain.trainOnCache()
     print("\rSaving Evaluations...                                                                                           ")
     brain.evalOnCache()
     print("\rClearing Cache...                                                                                           ")

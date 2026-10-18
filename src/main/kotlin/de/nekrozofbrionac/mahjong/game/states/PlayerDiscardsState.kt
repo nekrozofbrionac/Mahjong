@@ -1,7 +1,6 @@
 package de.nekrozofbrionac.mahjong.game.states
 
 import GameState
-import de.nekrozofbrionac.mahjong.hands.determineAverageWin
 import de.nekrozofbrionac.mahjong.game.Game
 import de.nekrozofbrionac.mahjong.game.Turn
 import de.nekrozofbrionac.mahjong.hands.evaluateHand

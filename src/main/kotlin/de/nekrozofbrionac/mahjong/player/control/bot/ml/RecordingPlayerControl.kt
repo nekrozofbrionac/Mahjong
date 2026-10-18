@@ -36,6 +36,11 @@ class RecordingPlayerControl(
   private val recordedActions: MutableList<RecordedAction> = mutableListOf()
   var winRecorded: Boolean = false
 
+  override fun endGame() {
+    //recordedActions.clear()
+    //winRecorded = false
+  }
+
   fun recording(): List<RecordedAction> {
     return recordedActions.toList()
   }

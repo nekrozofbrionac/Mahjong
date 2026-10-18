@@ -20,6 +20,14 @@ class Brain {
     PlayerControlAction.entries.associateWith { mutableListOf() }
   private val secondTrainingCache: Map<PlayerControlAction, MutableList<RecordedAction>> =
     PlayerControlAction.entries.associateWith { mutableListOf() }
+  private val minBatchSize: Map<PlayerControlAction, Int> = mapOf(
+    PlayerControlAction.WIN to 50,
+    PlayerControlAction.CHOOSE_DISCARD to 100,
+    PlayerControlAction.KONG_FROM_DRAW to 10,
+    PlayerControlAction.KONG_FROM_DISCARD to 10,
+    PlayerControlAction.PONG_FROM_DISCARD to 50,
+    PlayerControlAction.CHOW_FROM_DISCARD to 50,
+  )
 
   private val lastRecordedError: MutableMap<PlayerControlAction, Pair<Long, Float>> =
     PlayerControlAction.entries.associateWith { Pair(0L, Float.NaN) }.toMutableMap()
@@ -77,10 +85,9 @@ class Brain {
     return lobe.think(povToInputLayer(pov), generateOutputMask(pov, playerControlAction))
   }
 
-  fun biggestCacheSize(): Int {
-    return trainingCache.values.maxOf { it.size }
+  fun minBatchSizeSatisfied(): Boolean {
+    return PlayerControlAction.entries.any { action -> (trainingCache[action]!!.size >= minBatchSize[action]!!) }
   }
-
 
   @Synchronized
   fun addToTrainingCache(input: List<RecordedAction>) {
@@ -96,18 +103,18 @@ class Brain {
   }
 
   @Synchronized
-  fun relocateLonelySamples(minBatchSize: Int) {
+  fun relocateLonelySamples() {
     trainingCache.forEach { (action, recordedActions) ->
-      if (recordedActions.size < minBatchSize) {
+      if (recordedActions.size < minBatchSize[action]!!) {
         secondTrainingCache[action]!!.addAll(trainingCache[action]!!)
         trainingCache[action]!!.clear()
       }
     }
   }
 
-  fun trainOnCache(minBatchSize: Int) {
+  fun trainOnCache() {
     cacheInUse = true
-    relocateLonelySamples(minBatchSize)
+    relocateLonelySamples()
 
     lobes.forEach { (action, lobe) ->
       val trainingData = trainingCache[action]!!.map {

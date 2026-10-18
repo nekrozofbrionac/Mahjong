@@ -21,6 +21,7 @@ fun printPov(pov: PlayerPov) {
   println()
   println("------------ PLAYER POV ${pov.name} ------------")
   println()
+  println("Game Min Faan: ${pov.minFaan}")
   println("Current Turn: ${pov.turn}")
   println("Current Turn Player: ${pov.currentTurnPlayer}")
   println("Current Prevailing Wind: ${pov.prevailingWind}")
