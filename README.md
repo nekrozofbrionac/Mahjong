@@ -1,14 +1,14 @@
 # Mahjong (HK)
 
 This is a Kotlin implementation of Hong Kong Style Mahjong.
-Not only does it feature the Game itself, but also a few Bots that may vary in skill.
+Not only does it feature the game itself, but also a few bots that may vary in skill.
 
 The game itself is implemented as a state machine, where for every actionable event
 the participating players are prompted to respond accordingly to the given game state.
 
 ---
 
-This is a purely just for fun hobby endeavour,
+This is a purely just for fun hobby endeavor,
 and as such I literally couldn't care less
 about the professionalism for some of the decisions I have taken.
 
